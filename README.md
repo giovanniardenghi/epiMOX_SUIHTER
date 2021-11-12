@@ -17,4 +17,3 @@ numpy pandas geopandas scipy networkx tables optimparallel matplotlib descartes 
 
   where TestDir is the folder containing the file <input.inp> which defines the input simulation settings and the file  <params.csv> with the model parameters.
   The output is saved in the same TestDir folder.
-# epiMOX_SUIHTER
