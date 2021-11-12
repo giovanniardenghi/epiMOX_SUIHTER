@@ -1,0 +1,33 @@
+### Model
+model = SUIHTER
+country = Italia
+param_type = const
+param_file = param_est_d2021-04-21-Italia.csv 
+#param_file = param.csv
+#param_file = param_latest.csv
+
+Tf = 2021-06-15
+dt = 1
+edges_file = no_edges.csv
+borders_file =
+map_file =
+
+mobility = transport
+mixing = 2.25
+
+### Estimation : 1 estimate , 0 manual
+estim_param = 0
+DPC_start = 2020-12-08
+DPC_end = 2021-04-21
+
+### Extrapolation
+extrapolation = 0
+
+### Output
+out_type = h5
+plotting_step = 1
+gen_video = 0
+shape_file = ProvinceItalia.shp
+
+### Save code for reproducibility
+save_code=1

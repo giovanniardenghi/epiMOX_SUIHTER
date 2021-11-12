@@ -1,0 +1,175 @@
+Save output in Tests/cases_Italia/
+Scenario 2
+
+
+Isolated                     448954
+Hospitalized                22101.8
+Threatened                  3042.99
+Extinct                      118953
+data            2021-04-22 17:00:00
+Name: 135, dtype: object
+
+
+Isolated                     352239
+Hospitalized                14927.1
+Threatened                  2018.51
+Extinct                      126630
+data            2021-05-15 17:00:00
+Name: 158, dtype: object
+
+
+Isolated                     252707
+Hospitalized                10143.7
+Threatened                  1335.61
+Extinct                      133682
+data            2021-06-15 17:00:00
+Name: 189, dtype: object
+
+
+
+
+Scenario 3
+
+
+Isolated                     448936
+Hospitalized                22101.3
+Threatened                  3042.93
+Extinct                      118953
+data            2021-04-22 17:00:00
+Name: 135, dtype: object
+
+
+Isolated                     371877
+Hospitalized                  15066
+Threatened                  2025.43
+Extinct                      126649
+data            2021-05-15 17:00:00
+Name: 158, dtype: object
+
+
+Isolated                     358606
+Hospitalized                12056.2
+Threatened                  1514.63
+Extinct                      134282
+data            2021-06-15 17:00:00
+Name: 189, dtype: object
+
+
+
+
+Scenario 4
+
+
+Isolated                     448954
+Hospitalized                22101.8
+Threatened                  3042.99
+Extinct                      118953
+data            2021-04-22 17:00:00
+Name: 135, dtype: object
+
+
+Isolated                     384886
+Hospitalized                15154.5
+Threatened                   2029.8
+Extinct                      126662
+data            2021-05-15 17:00:00
+Name: 158, dtype: object
+
+
+Isolated                     462806
+Hospitalized                13750.6
+Threatened                  1665.92
+Extinct                      134772
+data            2021-06-15 17:00:00
+Name: 189, dtype: object
+
+
+
+
+Scenario 5
+
+
+Isolated                     448936
+Hospitalized                22101.3
+Threatened                  3042.93
+Extinct                      118953
+data            2021-04-22 17:00:00
+Name: 135, dtype: object
+
+
+Isolated                     371877
+Hospitalized                  15066
+Threatened                  2025.43
+Extinct                      126649
+data            2021-05-15 17:00:00
+Name: 158, dtype: object
+
+
+Isolated                     387464
+Hospitalized                12378.5
+Threatened                  1537.14
+Extinct                      134342
+data            2021-06-15 17:00:00
+Name: 189, dtype: object
+
+
+
+
+Scenario 6
+
+
+Isolated                     448936
+Hospitalized                22101.3
+Threatened                  3042.93
+Extinct                      118953
+data            2021-04-22 17:00:00
+Name: 135, dtype: object
+
+
+Isolated                     371877
+Hospitalized                  15066
+Threatened                  2025.43
+Extinct                      126649
+data            2021-05-15 17:00:00
+Name: 158, dtype: object
+
+
+Isolated                     373733
+Hospitalized                12186.5
+Threatened                  1522.15
+Extinct                      134302
+data            2021-06-15 17:00:00
+Name: 189, dtype: object
+
+
+
+
+Scenario 1
+
+
+Isolated                     448936
+Hospitalized                22101.3
+Threatened                  3042.93
+Extinct                      118953
+data            2021-04-22 17:00:00
+Name: 135, dtype: object
+
+
+Isolated                     333076
+Hospitalized                14759.8
+Threatened                  2008.59
+Extinct                      126603
+data            2021-05-15 17:00:00
+Name: 158, dtype: object
+
+
+Isolated                     188634
+Hospitalized                8847.52
+Threatened                  1207.67
+Extinct                      133218
+data            2021-06-15 17:00:00
+Name: 189, dtype: object
+
+
+
+

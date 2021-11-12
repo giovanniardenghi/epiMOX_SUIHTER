@@ -1,0 +1,2 @@
+Data_calibration,Extrapolation_type,Hospitalized,Hospitalized_lower,Hospitalized_time,Hospitalized_upper,Isolated,Isolated_lower,Isolated_time,Isolated_upper,Threatened,Threatened_lower,Threatened_time,Threatened_upper
+2021-10-31,linear,4831.831822956876,3529.7443038374813,2021-03-21T00:00:00,6492.653013581288,127093.5023227238,77223.16506293316,2021-03-21T00:00:00,217432.21991620024,455.8044407808583,383.8529388056371,2021-03-21T00:00:00,540.7326559266608

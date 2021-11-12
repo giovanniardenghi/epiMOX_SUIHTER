@@ -1,0 +1,1 @@
+python3 epiMOX_MCMC.py Tests/2021-08-16_ 2021-08-15 2021-02-20 300000 > outMCMC_

@@ -1,0 +1,117 @@
+Save output in Tests/cases_Emilia-Romagna/
+Scenario 2
+
+
+Isolated                    57140.5
+Hospitalized                2023.94
+Threatened                  269.825
+Extinct                     13090.6
+data            2021-04-22 17:00:00
+Name: 135, dtype: object
+
+
+Isolated                    39567.9
+Hospitalized                1097.93
+Threatened                  148.521
+Extinct                     13989.9
+data            2021-05-15 17:00:00
+Name: 158, dtype: object
+
+
+Isolated                    20166.4
+Hospitalized                518.925
+Threatened                  69.2237
+Extinct                     14658.8
+data            2021-06-15 17:00:00
+Name: 189, dtype: object
+
+
+
+
+Scenario 3
+
+
+Isolated                    57140.5
+Hospitalized                2023.94
+Threatened                  269.825
+Extinct                     13090.6
+data            2021-04-22 17:00:00
+Name: 135, dtype: object
+
+
+Isolated                    41192.5
+Hospitalized                 1101.9
+Threatened                  148.733
+Extinct                       13994
+data            2021-05-15 17:00:00
+Name: 158, dtype: object
+
+
+Isolated                    24504.8
+Hospitalized                546.915
+Threatened                   71.805
+Extinct                     14704.5
+data            2021-06-15 17:00:00
+Name: 189, dtype: object
+
+
+
+
+Scenario 4
+
+
+Isolated                    57140.5
+Hospitalized                2023.94
+Threatened                  269.825
+Extinct                     13090.6
+data            2021-04-22 17:00:00
+Name: 135, dtype: object
+
+
+Isolated                    42441.6
+Hospitalized                1104.82
+Threatened                  148.886
+Extinct                     13997.1
+data            2021-05-15 17:00:00
+Name: 158, dtype: object
+
+
+Isolated                    28813.3
+Hospitalized                572.404
+Threatened                  74.0833
+Extinct                     14744.5
+data            2021-06-15 17:00:00
+Name: 189, dtype: object
+
+
+
+
+Scenario 1
+
+
+Isolated                    57140.5
+Hospitalized                2023.94
+Threatened                  269.825
+Extinct                     13090.6
+data            2021-04-22 17:00:00
+Name: 135, dtype: object
+
+
+Isolated                    38502.6
+Hospitalized                 1095.2
+Threatened                  148.373
+Extinct                       13987
+data            2021-05-15 17:00:00
+Name: 158, dtype: object
+
+
+Isolated                    18003.4
+Hospitalized                503.519
+Threatened                  67.7545
+Extinct                     14632.5
+data            2021-06-15 17:00:00
+Name: 189, dtype: object
+
+
+
+
