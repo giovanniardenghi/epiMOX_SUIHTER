@@ -8,7 +8,7 @@ from pymcmcstat.MCMC import MCMC
 from pymcmcstat.MCMC import DataStructure
 from pymcmcstat.ParallelMCMC import ParallelMCMC
 from epi import estimation as es
-from epi import models_test as md
+from epi import models as md
 
 def model(*args,epi_model='SUIHTER'):
     modello = getattr(md, epi_model + 'model')

@@ -195,13 +195,6 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
     UD = eData['nuovi_positivi'].rolling(center=True,window=7,min_periods=1).mean()/Delta_t
     UD.index=pd.date_range('2020-02-24',pd.to_datetime('2020-02-24')+pd.Timedelta(UD.index[-1],'days'))
 
-    #CFR_t = CFR_t.rolling(center=True,window=7,min_periods=1).mean()
-    #CFR_t = CFR_t[int((day_init-epi_start).days):int((day_end-epi_start).days)].values 
-    #mask = np.isnan(CFR_t)
-    #idx = np.where(~mask,np.arange(mask.shape[0]),0)
-    #np.maximum.accumulate(idx, out=idx)
-    #CFR_t[mask] = CFR_t[idx[mask]]
-    #CFR = np.pad(CFR_t, (0,Tf+1-len(CFR_t)), 'edge')
 
     eData = eData[(eData["data"]>=day_init.isoformat()) & (eData["data"]<day_end.isoformat())]
     eData = eData.reset_index(drop=True)
@@ -258,8 +251,6 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
     vaccines.index = pd.to_datetime(vaccines.index)
     vaccines = vaccines.reindex(pd.date_range(vaccines.index[0],pd.to_datetime(Tf_data)),columns=['prima_dose', 'seconda_dose']).ffill()
 
-    #vaccines['prima_dose'] = 0
-    #vaccines['seconda_dose'] = 0
     dv1 = vaccines['prima_dose']
     dv2 = vaccines['seconda_dose']
 
@@ -318,10 +309,6 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
 
     PopIn = DO.sum(axis=1)
 
-    # Create output array
-    #if only_forecast:
-    #    T0 = int(initI['time'].values)
-    #else:
     T0 = 0
    
     Nstep = int((Tf-T0)/dt)
@@ -345,7 +332,7 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
 
     
 
-    params.forecast(eData['time'].max(),Tf, ext_deg,scenarios=scenari)
+    params.forecast(eData['time'].max(), Tf, ext_deg, scenarios=scenari)
     params.extrapolate_scenario()
     #params.vaccines_effect_gammaT()
     #params.vaccines_effect_gammaH()
@@ -506,14 +493,14 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
             results[t_index_l:t_index_u,-1] = res[3*Ns:4*Ns,t-1] * params.omegaH(time_list[t])
             #results[t_index_l:t_index_u,-2] = res[Ns:2*Ns,t-1] * params.atTime(t).dot(map_to_prov.transpose())[2]
             #results[t_index_l:t_index_u,-1] = res[3*Ns:4*Ns,t-1] * params.atTime(t).dot(map_to_prov.transpose())[4]
-            fluxes[t_index_l:t_index_u,0] = (res[:Ns,t-1] + 0.35 * res[7*Ns:8*Ns,t-1] + 0.3 * res[8*Ns:9*Ns,t-1]) * params.atTime(t).dot(map_to_prov.transpose())[0] *res[Ns:2*Ns,t-1] / Pop  # U in
-            fluxes[t_index_l:t_index_u,1] = res[Ns:2*Ns,t-1] #* params.delta(t) # I in
-            fluxes[t_index_l:t_index_u,2] = res[2*Ns:3*Ns,t-1] * params.omegaI(t) + res[4*Ns:5*Ns,t-1] * params.atTime(t).dot(map_to_prov.transpose())[12] # H in
-            fluxes[t_index_l:t_index_u,3] = res[3*Ns:4*Ns,t-1] * params.omegaH(t) # T in
-            fluxes[t_index_l:t_index_u,4] = res[5*Ns:6*Ns,t] - res[5*Ns:6*Ns,t-1] # E in
-            fluxes[t_index_l:t_index_u,5] = (res[Ns:2*Ns,t-1] * params.atTime(t).dot(map_to_prov.transpose())[5:8]).sum() # R in
-            fluxes[t_index_l:t_index_u,6] = dv1[t]  # V1 in
-            fluxes[t_index_l:t_index_u,7] = dv2[t]  # V2 in
+            #fluxes[t_index_l:t_index_u,0] = (res[:Ns,t-1] + 0.35 * res[7*Ns:8*Ns,t-1] + 0.3 * res[8*Ns:9*Ns,t-1]) * params.atTime(t).dot(map_to_prov.transpose())[0] *res[Ns:2*Ns,t-1] / Pop  # U in
+            #fluxes[t_index_l:t_index_u,1] = res[Ns:2*Ns,t-1] #* params.delta(t) # I in
+            #fluxes[t_index_l:t_index_u,2] = res[2*Ns:3*Ns,t-1] * params.omegaI(t) + res[4*Ns:5*Ns,t-1] * params.atTime(t).dot(map_to_prov.transpose())[12] # H in
+            #fluxes[t_index_l:t_index_u,3] = res[3*Ns:4*Ns,t-1] * params.omegaH(t) # T in
+            #fluxes[t_index_l:t_index_u,4] = res[5*Ns:6*Ns,t] - res[5*Ns:6*Ns,t-1] # E in
+            #fluxes[t_index_l:t_index_u,5] = (res[Ns:2*Ns,t-1] * params.atTime(t).dot(map_to_prov.transpose())[5:8]).sum() # R in
+            #fluxes[t_index_l:t_index_u,6] = dv1[t]  # V1 in
+            #fluxes[t_index_l:t_index_u,7] = dv2[t]  # V2 in
 
             #fluxes[t_index_l:t_index_u,8] = res[:Ns,t-1] * params.atTime(t).dot(map_to_prov.transpose())[0] * res[Ns:2*Ns,t-1] / Pop + dv1[t] * res[:Ns,t-1]/(res[:Ns,t-1]+res[6*Ns:7*Ns,t-1]) # S out 
             #fluxes[t_index_l:t_index_u,9] = res[Ns:2*Ns,t-1] * (params.delta(t) + params.atTime(t).dot(map_to_prov.transpose())[5]*(1-8*params.delta(t))) # U out
@@ -538,8 +525,8 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
     if model == 'SUIHTER':
         results_df = pd.DataFrame(results,columns=['Geocode','time','Suscept','Undetected','Isolated',
             'Hospitalized','Threatened','Extinct','Recovered','First_dose','Second_dose','Recovered_detected','New_positives','New_threatened'])
-        results_df[compartments[1:]+'_in'] = fluxes[:,:8]
-        results_df[compartments[np.arange(len(compartments))!=5]+'_out'] = fluxes[:,8:]
+        #results_df[compartments[1:]+'_in'] = fluxes[:,:8]
+        #results_df[compartments[np.arange(len(compartments))!=5]+'_out'] = fluxes[:,8:]
 
     elif model == 'SEIRD':
         results_df = pd.DataFrame(results,columns=['Geocode','time','Suscept','Exposed','Infected',
@@ -562,7 +549,7 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
         h5_outFileName = out_path+'/simdf.h5'
         results_df.to_hdf(h5_outFileName, key='results_df', mode='w')
     print('...done!')
-    gialla = (results_df['New_positives'].rolling(window=7,min_periods=1).sum()/Pop*1e5).values
+    #gialla = (results_df['New_positives'].rolling(window=7,min_periods=1).sum()/Pop*1e5).values
     #np.savetxt('gialla.txt',gialla)
     #np.savetxt('arancione.txt',gialla)
     #np.savetxt('rosso.txt',gialla)
