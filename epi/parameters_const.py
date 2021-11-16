@@ -86,7 +86,7 @@ def readTimes(content,section,values):
         elif not line:
             pass
         else:
-            data.append(datetime.date.fromisoformat(line.decode("utf-8").replace('\n','').replace('\n','')))  
+            data.append(datetime.date.fromisoformat(line.decode("utf-8").replace('\n','').replace('\r','')))  
             counter = counter + 1
             if counter == values:
                 return data

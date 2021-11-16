@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import functools
 import shutil
@@ -20,7 +21,7 @@ def model_fun(q,data):
     epi_model = args[0]
     Ns = len(args[3])
     scenarios = args[-1]
-    args[2].params[args[2].getMask()] = q[:-2]
+    args[2].params[args[2].getMask()] = q[:-4]
     args[2].forecast(args[2].dataEnd,t_data[-1],0,scenarios)
     Y0 = args[1].copy()
     Y0[1] *= q[-2]
@@ -61,10 +62,10 @@ def model_fun_mod(q,data):
     return res.transpose()
 
 def model_fun_var(q,data):
-    variant_perc = 0.#40
+    variant_perc = 1.#40
     variant_factor = 1.5
-    kappa1 = 33.5 / 51.1
-    kappa2 = 80.9 / 86.8 
+    kappa1 = 1#33.5 / 51.1
+    kappa2 = 1#80.9 / 86.8 
     t_data = data.xdata[0][:, 0]
     args = data.user_defined_object[0]
     epi_model = args[0]
@@ -72,6 +73,10 @@ def model_fun_var(q,data):
     scenarios = args[-1]
     args[2].params[args[2].getMask()] = q[:-2]
     args[2].forecast(args[2].dataEnd,t_data[-1],0,scenarios)
+    args[2].params_time[int(t_data[0]):int(t_data[-1])+1,3] = args[2].omegaI(t_data)
+    args[2].params_time[int(t_data[0]):int(t_data[-1])+1,3] += np.random.normal(0,args[2].params_time[:-1,3]*0.1)
+    args[2].params_time[int(t_data[0]):int(t_data[-1])+1,4] = args[2].omegaH(t_data)
+    args[2].params_time[int(t_data[0]):int(t_data[-1])+1,4] += np.random.normal(0,args[2].params_time[:-1,4]*0.1)
     Y0 = args[1].copy()
     Y0[1] *= q[-2]
     Y0[6] *= q[-1]
@@ -107,8 +112,11 @@ def model_fun_var_new(q,data):
     epi_model = args[0]
     Ns = len(args[3])
     scenarios = args[-1]
-    args[2].params[args[2].getMask()] = q[:-2]
+    args[2].params[args[2].getMask()] = q[:-4]
     args[2].forecast(args[2].dataEnd,t_data[-1],0,scenarios)
+    args[2].params_time[int(t_data[0]):int(t_data[-1])+1,3] = args[2].omegaI_vec[int(t_data[0]):int(t_data[-1])+1]*(1+q[-4])
+    args[2].params_time[int(t_data[0]):int(t_data[-1])+1,4] = args[2].omegaH_vec[int(t_data[0]):int(t_data[-1])+1]*(1+q[-3])
+
     Y0 = args[1].copy()
     Y0[1] *= q[-2]
     Y0[6] *= q[-1]
@@ -116,11 +124,14 @@ def model_fun_var_new(q,data):
     res = es.solve_rk4(getattr(md, epi_model + 'model'), [t_data[0], t_data[-1]], Y0, t_data[1] - t_data[0], args=args[2:-1])
     last = len(data.ydata[0][0])-1
     Y0 = np.zeros(res.shape[0]+1)
-    #res[1,last] += 300/args[2].delta(last)
-    Y0[1] = res[1,last] * (1 - variant_perc)
+    #res[1,last] -= 100/args[2].delta(last)
+    Y0[1] = res[1,last] * (1 - variant_perc) 
     Y0[2] = res[1,last] * variant_perc
     Y0[7:] = res[6:,last]
-    Y0[3:7] = data.ydata[0][0:-2,-1]
+    data_std = ((data.ydata[0][0:-2,:]-pd.DataFrame(data.ydata[0][0:-2,:].transpose()).rolling(window=7, min_periods=1, center=True).mean().values.transpose())/pd.DataFrame(data.ydata[0][0:-2,:].transpose()).rolling(window=7, min_periods=1, center=True).mean().values.transpose()).std(axis=1)
+
+    Y0[3:7] = data.ydata[0][0:-2,-1] 
+    Y0[3:6] *= np.random.normal(1,data_std[0:-1])
     Y0[0] = args[3] - Y0[1:].sum()
     t_data = t_data[last:]
     res = es.solve_rk4(getattr(md, epi_model + 'model_variant'), [t_data[0], t_data[-1]], Y0, t_data[1] - t_data[0], args=args[2:-1]+[variant_perc, variant_factor, kappa1, kappa2])
@@ -141,7 +152,10 @@ def model_ss(params,data):
     Y0[1] *= params[-2]
     Y0[6] *= params[-1]
     Y0[0] = args[3] - Y0[1:].sum()
-    args[2].params[args[2].getMask()] = params[:-2]
+    args[2].params[args[2].getMask()] = params[:-4]
+    args[2].params_time[int(t_data[0]):int(t_data[-1])+1,3] = args[2].omegaI_vec[int(t_data[0]):int(t_data[-1])+1]*(1+params[-4])
+    args[2].params_time[int(t_data[0]):int(t_data[-1])+1,4] = args[2].omegaH_vec[int(t_data[0]):int(t_data[-1])+1]*(1+params[-3])
+
     res = es.solve_rk4(getattr(md, epi_model + 'model'), [t_data[0], t_data[-1]], Y0, t_data[1]-t_data[0], args=args[2:]).reshape(-1,len(t_data)*len(args[3]))
     new_pos = np.concatenate([[data.ydata[0][-1,0]],(res[1,:-1] * np.array([args[2].delta(t) for t in t_data[1:]]).transpose()).flatten()])
 
@@ -204,15 +218,18 @@ def solveMCMC(testPath,t_vals,obs,Y0,l_args,nsimu = 1e4,sigma = 0.1*3e4,epi_mode
                         theta0=params.get()[i,j],
                         minimum=0.7*params.get()[i,j],
                         maximum=1.3*params.get()[i,j])
-        #mcstat.parameters.add_model_parameter(
-        #    name='omegaI_err',
-        #    prior_mu=0,
-        #    prior_sigma=0.1*max(params.params_time[:,3]))
 
-        #mcstat.parameters.add_model_parameter(
-        #    name='omegaH_err',
-        #    prior_mu=0,
-        #    prior_sigma=0.1*max(params.params_time[:,4]))
+        mcstat.parameters.add_model_parameter(
+            name='omegaI_err',
+            theta0=0,
+            prior_mu=0,
+            prior_sigma=0.10)
+
+        mcstat.parameters.add_model_parameter(
+            name='omegaH_err',
+            theta0=0,
+            prior_mu=0,
+            prior_sigma=0.20)
 
         mcstat.parameters.add_model_parameter(
             name='U0',

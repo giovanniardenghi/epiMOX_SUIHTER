@@ -6,4 +6,4 @@ venv
 *.h5
 **/MCMC
 *.zip
-Tests/**/*.txt
+Tests/**/MCMC

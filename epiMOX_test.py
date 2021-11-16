@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import networkx as nx
 import os.path
-from epi import models_test as md
+from epi import models as md
 from epi import loaddata as ld
 from epi import estimation as es
 from epi.convert import converter
@@ -343,46 +343,7 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
         new_data_df.columns = eData.columns
         eData = eData.append(new_data_df, ignore_index=True)
 
-    #scenari = np.array([[eData['time'].max()+5,  0.87]])
-    #scenari = np.array([[eData['time'].max()+20, 0.87]])
     
-    zona_gialla = np.loadtxt('gialla.txt')
-    zona_arancione = np.loadtxt('arancione.txt')
-    zona_rossa = np.loadtxt('rosso.txt')
-    
-    index_gialla = np.argmax(zona_gialla > 50)
-    index_arancione = np.argmax(zona_arancione > 150)
-    index_rosso = np.argmax(zona_rossa > 250)
-
-    BB = 0.3959
-    BG = 0.3794
-    BA = 0.2636
-    BR = 0.2301
-    BGP = 0.3158
-
-    #scenari = np.array([[eData['time'].max()+index_gialla+5, 0.87]])    # GIOVANNI PERCHE' QUI ERA 0.61 ?
-    
-    #scenari = np.array([[eData['time'].max()+index_gialla+5, 0.87],
-    #                    [eData['time'].max()+index_arancione+5, 0.77]])
-
-    #scenari = np.array([[eData['time'].max()+index_gialla+5, 0.87],
-    #                    [eData['time'].max()+index_arancione+5, 0.77],
-    #                    [eData['time'].max()+index_rosso+5, 0.61]])
-    
-    #scenari = np.array([[eData['time'].max()+index_gialla+5, BG/BB]])
-    
-    #scenari = np.array([[eData['time'].max()+index_gialla+5, BG/BB],
-    #                    [eData['time'].max()+index_arancione+5, BA/BB]])
-
-    #scenari = np.array([[eData['time'].max()+index_gialla+5, BG/BB],
-    #                    [eData['time'].max()+index_arancione+5, BA/BB],
-    #                    [eData['time'].max()+index_rosso+5, BR/BB]])
-   
-    # Scenario green-pass
-    #scenari =np.array([[eData['time'].max(), 0.85],
-    #                   [eData['time'].max()+10, 0.85*BGP/BB]])
-    #scenari = np.array([[125, 1.2 ]])
-    #scenari = np.array([[83, 0.1 ]])
 
     params.forecast(eData['time'].max(),Tf, ext_deg,scenarios=scenari)
     params.extrapolate_scenario()
@@ -566,7 +527,7 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
         else:
             results[t_index_l:t_index_u,-2] = initI['New_positives']
             results[t_index_l:t_index_u,-1] = initI['New_threatened']
-        tt = tt + dt
+    tt = tt + dt
 
     results[:,-3] = es.postProcessH(params, time_list, res[2*Ns:3*Ns,:], res[3*Ns:4*Ns,:], res[4*Ns:5*Ns,:], map_to_prov).flatten() + np.tile(eData[eData['time']==T0]['Recovered'].values,len(time_list)).squeeze()
     #print(res[3,1:]*params.params[-1,-3]/np.diff(res[5]))
