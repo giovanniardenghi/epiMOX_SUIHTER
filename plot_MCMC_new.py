@@ -6,11 +6,11 @@ import json
 import pickle as pl
 import datetime
 from epi import loaddata as ld
-from epi import models_test as md
+from epi import models as md
 from epi import estimation as es
 from epi.convert import converter
 from epiMOX_test import epiMOX
-from epi.MCMC_test import model_fun_var_new as model_fun
+from epi.MCMC import model_fun_var_new as model_fun
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from pymcmcstat.MCMC import DataStructure
@@ -121,6 +121,8 @@ def MCMC_postprocess(ResPath,nsample=500,burnin=None,scenario=None):
         Rt = es.computeRt_const(l_args,[pdata.xdata[0][0],pdata.xdata[0][-1]],1,model_mean[:,0],R0.mean(axis=0))
 
         np.savetxt(MCMCpath+'/Rt.csv',Rt)
+
+    # Clculate intervals
     interval = calculate_intervals(chain, ResultsDict, pdata, model_fun,
                                     nsample=nsample, waitbar=True)
     if Ns > 1:

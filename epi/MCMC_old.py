@@ -61,7 +61,7 @@ def model_fun_mod(q,data):
     return res.transpose()
 
 def model_fun_var(q,data):
-    variant_perc = 0.#40
+    variant_perc = 0.40
     variant_factor = 1.5
     kappa1 = 33.5 / 51.1
     kappa2 = 80.9 / 86.8 
@@ -98,10 +98,10 @@ def model_fun_var(q,data):
 
 
 def model_fun_var_new(q,data):
-    variant_perc = 1#.327 
+    variant_perc = 1#0.95
     variant_factor = 1.5
-    kappa1 = 1#33.5 / 51.1
-    kappa2 = 1#80.9 / 86.8 
+    kappa1 = 1 # 33.5 / 51.1
+    kappa2 = 1 # 80.9 / 86.8 
     t_data = data.xdata[0][:, 0]
     args = data.user_defined_object[0]
     epi_model = args[0]
@@ -116,7 +116,7 @@ def model_fun_var_new(q,data):
     res = es.solve_rk4(getattr(md, epi_model + 'model'), [t_data[0], t_data[-1]], Y0, t_data[1] - t_data[0], args=args[2:-1])
     last = len(data.ydata[0][0])-1
     Y0 = np.zeros(res.shape[0]+1)
-    #res[1,last] += 300/args[2].delta(last)
+    #res[1,last] -= 700/args[2].delta(last)
     Y0[1] = res[1,last] * (1 - variant_perc)
     Y0[2] = res[1,last] * variant_perc
     Y0[7:] = res[6:,last]
@@ -143,11 +143,10 @@ def model_ss(params,data):
     Y0[0] = args[3] - Y0[1:].sum()
     args[2].params[args[2].getMask()] = params[:-2]
     res = es.solve_rk4(getattr(md, epi_model + 'model'), [t_data[0], t_data[-1]], Y0, t_data[1]-t_data[0], args=args[2:]).reshape(-1,len(t_data)*len(args[3]))
-    new_pos = np.concatenate([[data.ydata[0][-1,0]],(res[1,:-1] * np.array([args[2].delta(t) for t in t_data[1:]]).transpose()).flatten()])
-
+    
     RtotD = es.postProcessH(args[2], t_data, res[2:3], res[3:4], res[4:5], args[5]).flatten('F') + ydata[-1,0]
 
-    ss=np.zeros(6)
+    ss=np.zeros(5)
 
     #weights =np.array([1, 1, 1, 1, 0.01]).reshape(5,1)
     if res.shape[0]==5:
@@ -159,10 +158,10 @@ def model_ss(params,data):
     elif res.shape[0]==9:
         #ydata = ydata[:-1]
         #ss = (((res[2:-2, :] - ydata]) ** 2)/np.maximum(weights*ydata,np.ones(ydata.shape))).sum(axis=1)
-        ss[:3] = (((res[2:5, :] - ydata[:-3]) ** 2)/np.maximum(ydata[:-3],np.ones(ydata[:-3].shape))).sum(axis=1)
-        ss[3] = (((np.diff(res[5]) - ydata[-3,1:])**2)/np.maximum(ydata[-3,1:],np.ones(ydata[-2,1:].shape))).sum()
-        ss[4] = (((RtotD - ydata[-2])**2)/np.maximum(0.1*ydata[-2],np.ones(ydata[-2].shape))).sum()
-        ss[5] = (((new_pos - ydata[-1])**2) / np.maximum(ydata[-1],np.ones(ydata[-1].shape))).sum()
+        ss[:3] = (((res[2:5, :] - ydata[:-2]) ** 2)/np.maximum(ydata[:-2],np.ones(ydata[:-2].shape))).sum(axis=1)
+        ss[3] = (((np.diff(res[5]) - ydata[-2,1:])**2)/np.maximum(ydata[-2,1:],np.ones(ydata[-2,1:].shape))).sum()
+        ss[4] = (((RtotD - ydata[-1])**2)/np.maximum(0.01*ydata[-1],np.ones(ydata[-1].shape))).sum()
+        print(np.sqrt(ss.sum()))
     return ss
 
 
@@ -204,15 +203,6 @@ def solveMCMC(testPath,t_vals,obs,Y0,l_args,nsimu = 1e4,sigma = 0.1*3e4,epi_mode
                         theta0=params.get()[i,j],
                         minimum=0.7*params.get()[i,j],
                         maximum=1.3*params.get()[i,j])
-        #mcstat.parameters.add_model_parameter(
-        #    name='omegaI_err',
-        #    prior_mu=0,
-        #    prior_sigma=0.1*max(params.params_time[:,3]))
-
-        #mcstat.parameters.add_model_parameter(
-        #    name='omegaH_err',
-        #    prior_mu=0,
-        #    prior_sigma=0.1*max(params.params_time[:,4]))
 
         mcstat.parameters.add_model_parameter(
             name='U0',

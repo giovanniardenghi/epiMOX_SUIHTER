@@ -2,12 +2,12 @@
 model = SUIHTER
 country = Italia
 param_type = const
-param_file =  param_est_d2021-11-07-Italia.csv
+param_file =  param_est_d2021-11-28-Italia.csv
 only_forecast=0
 #param_file = param.csv
 #param_file = param_latest.csv
 
-Tf = 2021-12-07
+Tf = 2021-12-28
 dt = 1
 edges_file = no_edges.csv
 borders_file =
@@ -17,9 +17,9 @@ mobility = transport
 mixing = 2.25
 
 ### Estimation : 1 estimate , 0 manual
-estim_param = 1
+estim_param = 0
 DPC_start = 2021-02-20
-DPC_end = 2021-11-07
+DPC_end = 2021-11-28
 
 ### Extrapolation
 extrapolation = 0

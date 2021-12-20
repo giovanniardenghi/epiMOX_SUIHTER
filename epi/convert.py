@@ -25,7 +25,7 @@ def converter(model, dati, regione, Nc):
     else:
         res = res.sort_values("data")
     res = res.reset_index(drop=True)
-    res_np = np.zeros((len(res), 4 + Nc))
+    res_np = np.zeros((len(res), 12 if model=="SUIHTER" else 7))
     res_np[:, 0] = geocode  # Geocode
     res_np[:, 1] = np.tile(np.arange(0, len(res)/len(set(geocode)), 1),len(set(geocode)))
 
@@ -44,6 +44,8 @@ def converter(model, dati, regione, Nc):
         res_np[:, 9] = res['nuovi_positivi'].values
         # New treathened 
         res_np[:, 10] = res['ingressi_terapia_intensiva'].values
+        # Daily extinct
+        res_np[:, 11] = res['deceduti'].diff().rolling(window=7,min_periods=1,center=True).mean().values
     elif model == 'SEIRD':
         # Infected
         res_np[:, 4] = res['ricoverati_con_sintomi'].values + \
@@ -56,7 +58,7 @@ def converter(model, dati, regione, Nc):
 
     if model == 'SUIHTER':
         results_df = pd.DataFrame(res_np, columns=['Geocode', 'time', 'Suscept', 'Undetected', 'Isolated',
-                                                   'Hospitalized', 'Threatened', 'Extinct', 'Recovered', 'New_positives','New_threatened'])
+                                                   'Hospitalized', 'Threatened', 'Extinct', 'Recovered', 'New_positives','New_threatened','Daily_extinct'])
         results_df['data'] = res['data']
     elif model == 'SEIRD':
         results_df = pd.DataFrame(res_np, columns=['Geocode', 'time', 'Suscept', 'Exposed', 'Infected',

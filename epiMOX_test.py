@@ -514,7 +514,7 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
         else:
             results[t_index_l:t_index_u,-2] = initI['New_positives']
             results[t_index_l:t_index_u,-1] = initI['New_threatened']
-    tt = tt + dt
+        tt = tt + dt
 
     results[:,-3] = es.postProcessH(params, time_list, res[2*Ns:3*Ns,:], res[3*Ns:4*Ns,:], res[4*Ns:5*Ns,:], map_to_prov).flatten() + np.tile(eData[eData['time']==T0]['Recovered'].values,len(time_list)).squeeze()
     #print(res[3,1:]*params.params[-1,-3]/np.diff(res[5]))
