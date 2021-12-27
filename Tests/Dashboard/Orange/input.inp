@@ -1,0 +1,37 @@
+### Model
+model = SUIHTER
+country = Italia
+param_type = const
+param_file =  ../Calibration/param_est_latest.csv
+only_forecast=1
+
+Tf = 2022-03-27
+dt = 1
+edges_file = no_edges.csv
+borders_file =
+map_file =
+
+mobility = transport
+mixing = 2.25
+
+### Estimation : 1 estimate , 0 manual
+estim_param = 0
+DPC_start = 2021-02-20
+DPC_end = 2021-12-26
+scenario = Orange 
+
+## Variant
+variant = Omicron
+variant_prevalence = 0.75
+
+### Extrapolation
+extrapolation = 0
+
+### Output
+out_type = h5
+plotting_step = 1
+gen_video = 0
+shape_file = ProvinceItalia.shp
+
+### Save code for reproducibility
+save_code=0

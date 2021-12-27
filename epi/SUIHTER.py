@@ -48,6 +48,7 @@ class SUIHTER:
         self.dV3vec = vaccines['terza_dose']
 
         self.variant_prevalence = 0 
+        self.variant_prevalence_hosp = 0
         self.sigma1v = self.sigma2v = self.sigma2pv = 0
         self.variant_factor = self.kappa1 = self.kappa2 = 0
 
@@ -66,6 +67,7 @@ class SUIHTER:
 
     def initialize_variant(self, variant, variant_prevalence):
         self.variant_prevalence = variant_prevalence
+        self.variant_prevalence_hosp = 0.25
         self.variant_factor = variant['factor']
         self.kappa1 = variant['kappa1']
         self.kappa2 = variant['kappa2']
@@ -284,7 +286,7 @@ class SUIHTER:
         UbtoR = rho_U * Ub
         UvtoR = rho_U * Uv
         ItoH = omega_I * I * ((casesS + self.h1 * casesV1 + self.h2 * casesV2)/(casesSini + self.h1 * casesV1ini + self.h2 * casesV2ini) *
-                              (1 - self.xi * current_variant_prevalence)/(1-self.xi*self.variant_prevalence) if self.t_list[0] > 0 else 1)
+                              (1 - self.xi * current_variant_prevalence)/(1-self.xi*self.variant_prevalence_hosp) if self.t_list[0] > 0 else 1)
         ItoR = rho_I*I
         ItoE = gamma_I * I * ((casesS + self.m1 * casesV1 + self.m2 * casesV2)/(casesSini + self.m1 * casesV1ini + self.m2 * casesV2ini) if self.t_list[0] > 0 else 1)
         HtoR = rho_H*H
