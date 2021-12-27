@@ -47,6 +47,11 @@ def parsedata(Data):
     else:
         by_age = False
 
+    if 'scenario' in Data.keys():
+        scenario = Data['scenario']
+    else:
+        scenario = None
+
     if 'dataExtrapolation' in Data.keys():
         data_ext_deg = int(Data['dataExtrapolation'])
     else:
@@ -86,7 +91,7 @@ def parsedata(Data):
 
     return(model, Nc, country, param_type, param_file, Tf, dt, save_code, by_age, edges_file, \
            borders_file, map_file, mobility, mixing, estim_param, DPC_start,\
-           DPC_ndays, data_ext_deg, ext_deg, out_type, only_forecast)
+           DPC_ndays, data_ext_deg, ext_deg, out_type, only_forecast, scenario)
 
 # Parse the dictionary: plot
 def parsedata_plot(Data):

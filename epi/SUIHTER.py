@@ -8,7 +8,7 @@ from epi import parameters_const as pm
 class SUIHTER:
 
     def __init__(self, Y0, params, t_list, DPC_start, DPC_end, data, Pop, 
-                       by_age, codes, vaccines, maxV, out_path, sigma1=0.29, sigma2=0.12, sigma2p=0.45, tamponi=None, 
+                       by_age, codes, vaccines, maxV, out_path, sigma1=0.29, sigma2=0.12, sigma2p=0.45, tamponi=None, scenario=None,
                        out_type='h5'):
         # initialize compartments
         # Y0: Nc x Ns
@@ -32,6 +32,7 @@ class SUIHTER:
         self.t_list = t_list
         self.DPC_start = DPC_start
         self.DPC_end = DPC_end
+        self.scenario = scenario
 
         self.data = data
 
@@ -69,6 +70,7 @@ class SUIHTER:
         self.kappa1 = variant['kappa1']
         self.kappa2 = variant['kappa2']
         self.kappa2p = variant['kappa2p']
+        self.xi = variant['xi']
         self.sigma1v = 1 - self.kappa1 + self.kappa1 * self.sigma1
         self.sigma2v = 1 - self.kappa2 + self.kappa2 * self.sigma2
         self.sigma2pv = 1 - self.kappa2p + self.kappa2p * self.sigma2p
@@ -131,30 +133,26 @@ class SUIHTER:
         S_vaccinabili = S - S_non_vaccinabili
         S_gp = tamponi * self.Sfrac[t_int]
         S_no_gp = S_vaccinabili - S_gp
-        # bianca
+
+        # attuale
         beta_gp =       0.0404
         beta_test =     0.0326
         beta_novax =    0.0197
                               
         # gialla              
-        beta_gp_y =     0.0404
-        beta_test_y =   0.0318
-        beta_novax_y =  0.0195
+        beta_gp_y =     0.036 #0.0404
+        beta_test_y =   0.029 #0.0318
+        beta_novax_y =  0.017 #0.0195
                               
         # arancione           
-        beta_gp_a =     0.0399
-        beta_test_a =   0.0296
-        beta_novax_a =  0.0189
+        beta_gp_a =     0.032#0.0399
+        beta_test_a =   0.026#0.0296
+        beta_novax_a =  0.015#0.0189
                               
         # rossa               
         beta_gp_r =     0.0159
         beta_test_r =   0.0149
         beta_novax_r =  0.0079
-
-        # nera
-        beta_gp_k =     0.002
-        beta_test_k =   0.002
-        beta_novax_k =  0.002
 
         vax = V1 + V2 + V2p
         betaV_now = betaV_new = beta_gp
@@ -163,11 +161,9 @@ class SUIHTER:
         betaS_now_y = (beta_gp * (S - S_no_gp) + beta_novax_y * S_no_gp) / S
         betaS_now_a = (beta_gp * (S - S_no_gp) + beta_novax_a * S_no_gp) / S
         betaS_now_r = (beta_gp_r * (S - S_no_gp) + beta_novax_r * S_no_gp) / S
-        betaS_now_k = (beta_gp_k * (S - S_no_gp) + beta_novax_k * S_no_gp) / S
         betaS_new_y = (beta_test_y * S_gp + beta_gp * S_non_vaccinabili + beta_novax_y * S_no_gp) / S
         betaS_new_a = (beta_test_a * S_gp + beta_gp * S_non_vaccinabili + beta_novax_a * S_no_gp) / S
         betaS_new_r = (beta_test_r * S_gp + beta_gp_r * S_non_vaccinabili + beta_novax_r * S_no_gp) / S
-        betaS_new_k = (beta_test_k * S_gp + beta_gp_k * S_non_vaccinabili + beta_novax_k * S_no_gp) / S
 
         StoUb = S * beta_Ub * Ub / self.Pop
         StoUv = S * beta_Uv * Uv / self.Pop
@@ -182,91 +178,98 @@ class SUIHTER:
         maxT = 9044
 
         U = Ub + Uv
+        current_variant_prevalence = Uv/U
 
         tauratioS = 1
         tauratio = 1
 
         if self.t_list[0]>0:
-            ## Screnario giallo
-            if t - self.t_list[0] > 3:
-                if self.inYellow == False:
-                    self.inRed =False 
-                    self.inOrange = False
-                    self.inYellow = True
-                    self.timeNPI = t
-                if t-self.timeNPI > self.adapNPI:
-                    tauratioS = betaS_new_y / betaS_new
-                    tauratio  = beta_gp_y / betaV_new
-                else:
-                    tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_y / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*1
-                    tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_y / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*1
+            # Nessuno screnario 
+            if self.scenario==None:
+                pass
+            # Screnario giallo
+            elif self.scenario=='Yellow':
+                if t - self.t_list[0] > 3:
+                    if self.inYellow == False:
+                        self.inRed =False 
+                        self.inOrange = False
+                        self.inYellow = True
+                        self.timeNPI = t
+                    if t-self.timeNPI > self.adapNPI:
+                        tauratioS = betaS_new_y / betaS_new
+                        tauratio  = beta_gp_y / betaV_new
+                    else:
+                        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_y / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*1
+                        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_y / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*1
             # Screnario arancione
-            #if t - self.t_list[0] > 3:
-            #    if self.inOrange == False:
-            #        self.inRed = False
-            #        self.inOrange = True
-            #        self.inYellow = False
-            #        self.timeNPI = t
-            #    if t-self.timeNPI > self.adapNPI:
-            #        tauratioS = betaS_new_a / betaS_new
-            #        tauratio  = beta_gp_a / betaV_new
-            #    else:
-            #        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_y / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*betaS_new_y / betaS_new
-            #        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_y / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*beta_gp_y / betaV_new
-            ## Screnario rosso
-            #if t - self.t_list[0] > 3:
-            #    if self.inRed == False:
-            #        self.inRed = True
-            #        self.inOrange = False
-            #        self.inYellow = False
-            #        self.timeNPI = t
-            #    if t-self.timeNPI > self.adapNPI:
-            #        tauratioS = betaS_new_r / betaS_new
-            #        tauratio  = beta_gp_r / betaV_new
-            #    else:
-            #        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_r / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*1
-            #        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_r / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*1
-            print(t, tauratioS, tauratio)
+            elif self.scenario=='Orange':
+                if t - self.t_list[0] > 3:
+                    if self.inOrange == False:
+                        self.inRed = False
+                        self.inOrange = True
+                        self.inYellow = False
+                        self.timeNPI = t
+                    if t-self.timeNPI > self.adapNPI:
+                        tauratioS = betaS_new_a / betaS_new
+                        tauratio  = beta_gp_a / betaV_new
+                    else:
+                        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_y / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*betaS_new_y / betaS_new
+                        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_y / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*beta_gp_y / betaV_new
+            # Screnario rosso
+            elif self.scenario=='Red':
+                if t - self.t_list[0] > 3:
+                    if self.inRed == False:
+                        self.inRed = True
+                        self.inOrange = False
+                        self.inYellow = False
+                        self.timeNPI = t
+                    if t-self.timeNPI > self.adapNPI:
+                        tauratioS = betaS_new_r / betaS_new
+                        tauratio  = beta_gp_r / betaV_new
+                    else:
+                        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_r / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*1
+                        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_r / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*1
             # Scenario Controllato
-            #if (delta * U > 250/1e5/7*self.Pop) and (H > 0.4*maxH) and (T > 0.3*maxT):
-            #    if self.inRed == False:
-            #        self.inRed = True
-            #        self.inOrange = False
-            #        self.inYellow = False
-            #        self.timeNPI = t
-            #    if t-self.timeNPI > self.adapNPI:
-            #        tauratioS = betaS_new_r / betaS_new
-            #        tauratio  = beta_gp_r / betaV_new
-            #    else:
-            #        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_r / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*betaS_new_a / betaS_new
-            #        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_r / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*beta_gp_a / betaV_new
-            #    print(t, ' - Rossa', self.inYellow, self.inOrange, self.inRed, self.timeNPI, tauratioS)
-            #elif (delta * U > 150/1e5/7*self.Pop) and (H > 0.3*maxH) and (T > 0.2*maxT):
-            #    if self.inOrange == False:
-            #        self.inRed = False
-            #        self.inOrange = True
-            #        self.inYellow = False
-            #        self.timeNPI = t
-            #    if t-self.timeNPI > self.adapNPI:
-            #        tauratioS = betaS_new_a / betaS_new
-            #        tauratio  = beta_gp_a / betaV_new
-            #    else:
-            #        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_y / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*betaS_new_y / betaS_new
-            #        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_y / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*beta_gp_y / betaV_new
-            #    print(t, ' - Arancione', self.inYellow, self.inOrange, self.inRed, self.timeNPI, tauratioS)
-            #elif (delta * U > 150/1e5/7*self.Pop) or ((delta * U > 50/1e5/7*self.Pop) and (H > 0.15*maxH) and (T > 0.1*maxT)):
-            #    if self.inYellow == False:
-            #        self.inRed = False
-            #        self.inOrange = False
-            #        self.inYellow = True
-            #        self.timeNPI = t
-            #    if t-self.timeNPI > self.adapNPI:
-            #        tauratioS = betaS_new_y / betaS_new
-            #        tauratio  = beta_gp_y / betaV_new
-            #    else:
-            #        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_y / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*1
-            #        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_y / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*1
-            #    print(t, ' - Gialla', self.inYellow, self.inOrange, self.inRed, self.timeNPI, tauratioS)
+            elif self.scenario=='Controlled':
+                if (delta * U > 250/1e5/7*self.Pop) and (H > 0.4*maxH) and (T > 0.3*maxT):
+                    if self.inRed == False:
+                        self.inRed = True
+                        self.inOrange = False
+                        self.inYellow = False
+                        self.timeNPI = t
+                    if t-self.timeNPI > self.adapNPI:
+                        tauratioS = betaS_new_r / betaS_new
+                        tauratio  = beta_gp_r / betaV_new
+                    else:
+                        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_r / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*betaS_new_a / betaS_new
+                        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_r / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*beta_gp_a / betaV_new
+                    print(t, ' - Rossa', self.inYellow, self.inOrange, self.inRed, self.timeNPI, tauratioS)
+                elif (delta * U > 150/1e5/7*self.Pop) and (H > 0.3*maxH) and (T > 0.2*maxT):
+                    if self.inOrange == False:
+                        self.inRed = False
+                        self.inOrange = True
+                        self.inYellow = False
+                        self.timeNPI = t
+                    if t-self.timeNPI > self.adapNPI:
+                        tauratioS = betaS_new_a / betaS_new
+                        tauratio  = beta_gp_a / betaV_new
+                    else:
+                        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_y / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*betaS_new_y / betaS_new
+                        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_y / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*beta_gp_y / betaV_new
+                    print(t, ' - Arancione', self.inYellow, self.inOrange, self.inRed, self.timeNPI, tauratioS)
+                elif (delta * U > 150/1e5/7*self.Pop) or ((delta * U > 50/1e5/7*self.Pop) and (H > 0.15*maxH) and (T > 0.1*maxT)):
+                    if self.inYellow == False:
+                        self.inRed = False
+                        self.inOrange = False
+                        self.inYellow = True
+                        self.timeNPI = t
+                    if t-self.timeNPI > self.adapNPI:
+                        tauratioS = betaS_new_y / betaS_new
+                        tauratio  = beta_gp_y / betaV_new
+                    else:
+                        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_y / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*1
+                        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_y / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*1
+                    print(t, ' - Gialla', self.inYellow, self.inOrange, self.inRed, self.timeNPI, tauratioS)
             StoUb *=   tauratioS
             StoUv *=   tauratioS
             V1toUb *=  tauratio
@@ -276,57 +279,12 @@ class SUIHTER:
             V2ptoUb *= tauratio
             V2ptoUv *= tauratio
 
-            #if (delta * U > 250/1e5/7*self.Pop) and (H > 0.4*maxH) and (T > 0.3*maxT):
-            #    if self.inRed == False:
-            #        self.inRed = True
-            #        self.inOrange = False
-            #        self.inYellow = False
-            #        self.timeNPI = t
-            #    print(t, ' - Rossa', self.inYellow, self.inOrange, self.inRed, self.timeNPI)
-            #    StoUb *=   betaS_new_r / betaS_new
-            #    StoUv *=   betaS_new_r / betaS_new
-            #    V1toUb *=  beta_gp_r / betaV_new
-            #    V1toUv *=  beta_gp_r / betaV_new
-            #    V2toUb *=  beta_gp_r / betaV_new
-            #    V2toUv *=  beta_gp_r / betaV_new
-            #    V2ptoUb *= beta_gp_r / betaV_new
-            #    V2ptoUv *= beta_gp_r / betaV_new
-            #elif (delta * U > 150/1e5/7*self.Pop) and (H > 0.3*maxH) and (T > 0.2*maxT):
-            #    if self.inOrange == False:
-            #        self.inRed = False
-            #        self.inOrange = True
-            #        self.inYellow = False
-            #        self.timeNPI = t
-            #    print(t, ' - Arancione', self.inYellow, self.inOrange, self.inRed, self.timeNPI)
-            #    StoUb *=   betaS_new_a / betaS_new
-            #    StoUv *=   betaS_new_a / betaS_new
-            #    V1toUb *=  beta_gp_a / betaV_new
-            #    V1toUv *=  beta_gp_a / betaV_new
-            #    V2toUb *=  beta_gp_a / betaV_new
-            #    V2toUv *=  beta_gp_a / betaV_new
-            #    V2ptoUb *= beta_gp_a / betaV_new
-            #    V2ptoUv *= beta_gp_a / betaV_new
-            #elif (delta * U > 150/1e5/7*self.Pop) or ((delta * U > 50/1e5/7*self.Pop) and (H > 0.15*maxH) and (T > 0.1*maxT)):
-            #    if self.inYellow == False:
-            #        self.inRed = False
-            #        self.inOrange = False
-            #        self.inYellow = True
-            #        self.timeNPI = t
-            #    print(t, ' - Gialla', self.inYellow, self.inOrange, self.inRed, self.timeNPI)
-            #    StoUb *=   betaS_new_y / betaS_new
-            #    StoUv *=   betaS_new_y / betaS_new
-            #    V1toUb *=  beta_gp_y / betaV_new
-            #    V1toUv *=  beta_gp_y / betaV_new
-            #    V2toUb *=  beta_gp_y / betaV_new
-            #    V2toUv *=  beta_gp_y / betaV_new
-            #    V2ptoUb *= beta_gp_y / betaV_new
-            #    V2ptoUv *= beta_gp_y / betaV_new
-
         UbtoI = delta * Ub
         UvtoI = delta * Uv
         UbtoR = rho_U * Ub
         UvtoR = rho_U * Uv
-        ItoH = omega_I * I * ((casesS + self.h1 * casesV1 + self.h2 * casesV2)/(casesSini + self.h1 * casesV1ini + self.h2 * casesV2ini) if self.t_list[0] > 0 else 1)
+        ItoH = omega_I * I * ((casesS + self.h1 * casesV1 + self.h2 * casesV2)/(casesSini + self.h1 * casesV1ini + self.h2 * casesV2ini) *
+                              (1 - self.xi * current_variant_prevalence)/(1-self.xi*self.variant_prevalence) if self.t_list[0] > 0 else 1)
         ItoR = rho_I*I
         ItoE = gamma_I * I * ((casesS + self.m1 * casesV1 + self.m2 * casesV2)/(casesSini + self.m1 * casesV1ini + self.m2 * casesV2ini) if self.t_list[0] > 0 else 1)
         HtoR = rho_H*H

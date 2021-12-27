@@ -30,7 +30,7 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
 
     model, Nc, country, param_type, param_file, Tf, dt, save_code, by_age, edges_file, \
         borders_file, map_file, mobility, mixing, estim_param, DPC_start,\
-        DPC_end, data_ext_deg, ext_deg, out_type, only_forecast\
+        DPC_end, data_ext_deg, ext_deg, out_type, only_forecast, scenario\
         = ld.parsedata(DataDic)
     
     if ndays:
@@ -294,7 +294,7 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
     if estim_param:
         print('  Estimating...')
         model_solver = model_class(Y0, params, time_list[:(day_end-day_init).days+1], day_init, day_end, eData, Pop,
-                       by_age, geocodes, vaccines, maxV, out_path, tamponi=tamponi, out_type=out_type)
+                       by_age, geocodes, vaccines, maxV, out_path, tamponi=tamponi, scenario=None, out_type=out_type)
         model_solver.estimate()
         print('  ...done!')
     print('  Solving...')
@@ -306,7 +306,7 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
     params.extrapolate_scenario()
 
     model_solver = model_class(Y0, params, time_list, day_init, day_end, eData, Pop,
-                       by_age, geocodes, vaccines, maxV, out_path, tamponi=tamponi, out_type=out_type)
+                       by_age, geocodes, vaccines, maxV, out_path, tamponi=tamponi, scenario=scenario, out_type=out_type)
     
     model_solver.solve()
 
