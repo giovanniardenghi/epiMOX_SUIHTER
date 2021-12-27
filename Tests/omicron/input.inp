@@ -2,7 +2,7 @@
 model = SUIHTER
 country = Italia
 param_type = const
-param_file =  param_est_d2021-12-19-Italia.csv
+param_file =  param_est_d2021-12-22-Italia.csv
 only_forecast=1
 
 Tf = 2022-03-19
@@ -17,11 +17,11 @@ mixing = 2.25
 ### Estimation : 1 estimate , 0 manual
 estim_param = 0
 DPC_start = 2021-02-20
-DPC_end = 2021-12-19
+DPC_end = 2021-12-22
 
 ## Variant
 variant = Omicron
-variant_prevalence = 0.01
+variant_prevalence = 0.25
 
 ### Extrapolation
 extrapolation = 0

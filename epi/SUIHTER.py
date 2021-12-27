@@ -69,6 +69,7 @@ class SUIHTER:
         self.kappa1 = variant['kappa1']
         self.kappa2 = variant['kappa2']
         self.kappa2p = variant['kappa2p']
+        self.xi = variant['xi']
         self.sigma1v = 1 - self.kappa1 + self.kappa1 * self.sigma1
         self.sigma2v = 1 - self.kappa2 + self.kappa2 * self.sigma2
         self.sigma2pv = 1 - self.kappa2p + self.kappa2p * self.sigma2p
@@ -183,6 +184,8 @@ class SUIHTER:
 
         U = Ub + Uv
 
+        current_variant_prevalence = Uv/U
+        
         tauratioS = 1
         tauratio = 1
 
@@ -326,7 +329,8 @@ class SUIHTER:
         UvtoI = delta * Uv
         UbtoR = rho_U * Ub
         UvtoR = rho_U * Uv
-        ItoH = omega_I * I * ((casesS + self.h1 * casesV1 + self.h2 * casesV2)/(casesSini + self.h1 * casesV1ini + self.h2 * casesV2ini) if self.t_list[0] > 0 else 1)
+        ItoH = omega_I * I * ((casesS + self.h1 * casesV1 + self.h2 * casesV2)/(casesSini + self.h1 * casesV1ini + self.h2 * casesV2ini) * 
+                              (1 - self.xi * current_variant_prevalence)/(1-self.xi*self.variant_prevalence) if self.t_list[0] > 0 else 1)
         ItoR = rho_I*I
         ItoE = gamma_I * I * ((casesS + self.m1 * casesV1 + self.m2 * casesV2)/(casesSini + self.m1 * casesV1ini + self.m2 * casesV2ini) if self.t_list[0] > 0 else 1)
         HtoR = rho_H*H

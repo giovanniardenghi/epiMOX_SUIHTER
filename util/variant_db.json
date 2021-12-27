@@ -10,6 +10,7 @@
 			"factor":1.4,
 			"kappa1":1,
 			"kappa2":1,
-			"kappa2p":0.82
+			"kappa2p":0.82,
+			"xi":0.4
 		}
 }
