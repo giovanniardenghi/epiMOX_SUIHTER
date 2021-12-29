@@ -3,32 +3,25 @@ today=$(date -Idate --date='Yesterday')
 endforecast=$(date -Idate --date="+90 days")
 echo $today
 
+cd /home/parolini/github/epiMOX_SUIHTER
+
 #Calibrazione LS
-sed "s/TODAY/${today}/g" Tests/Dashboard/Calibration/input.inp_template > Tests/Dashboard/Calibration/input.inp
-python3 epiMOX_class.py Tests/Dashboard/Calibration 
-cp Tests/Dashboard/Calibration/param_est_d$today-Italia.csv Tests/Dashboard/Calibration/param_est_latest.csv
+#sed "s/TODAY/${today}/g" Tests/Dashboard/Calibration/input.inp_template > Tests/Dashboard/Calibration/input.inp
+#python3 epiMOX_class.py Tests/Dashboard/Calibration 
+#cp Tests/Dashboard/Calibration/param_est_d$today-Italia.csv Tests/Dashboard/Calibration/param_est_latest.csv
 
-#Caso base
-sed "s/TODAY/${today}/g" Tests/Dashboard/Base/input.inp_template > Tests/Dashboard/Base/input.inp
-sed -i "s/ENDFORECAST/${endforecast}/g" Tests/Dashboard/Base/input.inp
-python3 epiMOX_class.py Tests/Dashboard/Base
+for scenario in Base Controlled Yellow Orange Red
+do
+sed "s/TODAY/${today}/g" Tests/Dashboard/$scenario/input.inp_template > Tests/Dashboard/$scenario/input.inp
+sed -i "s/ENDFORECAST/${endforecast}/g" Tests/Dashboard/$scenario/input.inp
+python3 epiMOX_class.py Tests/Dashboard/$scenario
+python3 h5_to_json.py Tests/Dashboard/$scenario/simdf.h5
+cp Tests/Dashboard/$scenario/simdf.json ~/dpc-covid-data/SUIHTER/$scenario.json
+done
 
-#Controlled
-sed "s/TODAY/${today}/g" Tests/Dashboard/Controlled/input.inp_template > Tests/Dashboard/Controlled/input.inp
-sed -i "s/ENDFORECAST/${endforecast}/g" Tests/Dashboard/Controlled/input.inp
-python3 epiMOX_class.py Tests/Dashboard/Controlled
-
-#Yellow
-sed "s/TODAY/${today}/g" Tests/Dashboard/Yellow/input.inp_template > Tests/Dashboard/Yellow/input.inp
-sed -i "s/ENDFORECAST/${endforecast}/g" Tests/Dashboard/Yellow/input.inp
-python3 epiMOX_class.py Tests/Dashboard/Yellow
-
-#Orange
-sed "s/TODAY/${today}/g" Tests/Dashboard/Orange/input.inp_template > Tests/Dashboard/Orange/input.inp
-sed -i "s/ENDFORECAST/${endforecast}/g" Tests/Dashboard/Orange/input.inp
-python3 epiMOX_class.py Tests/Dashboard/Orange
-
-#Red
-sed "s/TODAY/${today}/g" Tests/Dashboard/Red/input.inp_template > Tests/Dashboard/Red/input.inp
-sed -i "s/ENDFORECAST/${endforecast}/g" Tests/Dashboard/Red/input.inp
-python3 epiMOX_class.py Tests/Dashboard/Red
+cd ~/dpc-covid-data
+echo $today > SUIHTER/last_update
+git pull
+git add SUIHTER/*json SUIHTER/last_update
+git commit -m "update ${today}"
+git push
