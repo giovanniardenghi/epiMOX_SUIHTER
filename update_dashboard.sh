@@ -6,9 +6,9 @@ echo $today
 cd /home/parolini/github/epiMOX_SUIHTER
 
 #Calibrazione LS
-#sed "s/TODAY/${today}/g" Tests/Dashboard/Calibration/input.inp_template > Tests/Dashboard/Calibration/input.inp
-#python3 epiMOX_class.py Tests/Dashboard/Calibration 
-#cp Tests/Dashboard/Calibration/param_est_d$today-Italia.csv Tests/Dashboard/Calibration/param_est_latest.csv
+sed "s/TODAY/${today}/g" Tests/Dashboard/Calibration/input.inp_template > Tests/Dashboard/Calibration/input.inp
+python3 epiMOX_class.py Tests/Dashboard/Calibration 
+cp Tests/Dashboard/Calibration/param_est_d$today-Italia.csv Tests/Dashboard/Calibration/param_est_latest.csv
 
 for scenario in Base Controlled Yellow Orange Red
 do
