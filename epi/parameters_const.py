@@ -157,7 +157,7 @@ class Params():
     def compute_param_over_time(self,Tf):
         times = np.arange(0,Tf+1,).astype(int)
         for i,t in enumerate(times):
-            self.params_time[i,self.getMask()[0]] = self.atTime(t)[self.getMask()[0]]
+            self.params_time[i,self.getMask().any(axis=0)] = self.atTime(t)[self.getMask().any(axis=0)]
             #self.params_time[i] = self.atTime(t)
 
 
