@@ -349,7 +349,6 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
         model_solver.solve()
     #model_solver.computeRt()
 
-    model_solver.save()
 
     # Save parameters
     if estim_param == True:
@@ -362,4 +361,5 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
 if __name__=='__main__':
     # Read data file
     testPath = sys.argv[1]
-    epiMOX(testPath)
+    model_solver = epiMOX(testPath)
+    model_solver.save()

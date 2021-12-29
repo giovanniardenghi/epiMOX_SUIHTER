@@ -50,7 +50,7 @@ class SUIHTER:
         self.variant_prevalence = 0 
         self.variant_prevalence_hosp = 0
         self.sigma1v = self.sigma2v = self.sigma2pv = 0
-        self.variant_factor = self.kappa1 = self.kappa2 = 0
+        self.variant_factor = self.kappa1 = self.kappa2 = self.xi = 0
 
         self.R_d = np.zeros((t_list[-1]+1, self.Ns))
         self.Sfrac = np.zeros((t_list[-1]+1, self.Ns))
@@ -315,6 +315,54 @@ class SUIHTER:
 
         return np.vstack((dSdt, dUbdt, dUvdt, dIdt, dHdt, dTdt, dEdt, dRdt, dV1dt, dV2dt, dV2pdt)).squeeze()
 
+    def model_MCMC(self, params, data):
+        t_list = data.xdata[0].squeeze()
+        self.t_list = t_list.copy()
+        self.params.params[self.params.getMask()] = params[:-4]
+        self.params.forecast(self.params.dataEnd,self.t_list[-1],0,None)
+        self.params.params_time[self.t_list[0]:self.t_list[-1]+1,3] = self.params.omegaI_vec[self.t_list[0]:self.t_list[-1]+1]*(1+params[-4])
+        self.params.params_time[self.t_list[0]:self.t_list[-1]+1,4] = self.params.omegaH_vec[self.t_list[0]:self.t_list[-1]+1]*(1+params[-3])
+        
+        Y0 = data.ydata[0].squeeze()
+
+        self.Y0 = Y0.copy()
+        self.Y0[1] *= params[-2]
+        self.Y0[7] *= params[-1]
+        self.Y0[0] = self.Pop - self.Y0[1:].sum()
+        
+        self.solve()
+        
+        forecast = data.user_defined_object[0][0]
+
+        if forecast:
+            variant = data.user_defined_object[0][1]
+            variant_prevalence = data.user_defined_object[0][2]
+            if variant:
+                self.initialize_variant(variant, variant_prevalence)
+            T0 = int(self.data.time.iloc[-1])
+            self.t_list = self.t_list[T0:]
+            self.Y0 = self.Y[...,T0].copy()
+            self.Y0[2] = self.Y0[1] * variant_prevalence
+            self.Y0[1] *= 1 - variant_prevalence
+            self.Y0[3] = self.data.iloc[-1]['Isolated']
+            self.Y0[4] = self.data.iloc[-1]['Hospitalized']
+            self.Y0[5] = self.data.iloc[-1]['Threatened']
+            self.Y0[6] = self.data.iloc[-1]['Extinct']
+
+            data_std = ((self.data[['Isolated', 'Hospitalized', 'Threatened']] - self.data[['Isolated', 'Hospitalized', 'Threatened']].rolling(window=7, min_periods=1, center=True).mean())/self.data[['Isolated', 'Hospitalized', 'Threatened']].rolling(window=7, min_periods=1, center=True).mean()).values.transpose().std(axis=1)
+            self.Y0[3:6] *= np.random.normal(1,data_std)
+            self.solve()
+        
+        results = self.Y[:,self.t_list].copy()
+        results.resize(results.shape[0]+3, results.shape[1])
+        results[1] += results[2]
+        results = np.delete(results, 2, 0)
+        results[-3] = self.R_d[self.t_list].flatten()
+        results[-2,0] = self.data[self.data['time'] == self.t_list[0]]['New_positives'].values
+        results[-2,1:] = (results[1,:-1] * self.params.params_time[self.t_list[0]+1:,2]).flatten()
+        results[-1,0] = self.data[self.data['time'] == self.t_list[0]]['New_threatened'].values
+        results[-1,1:] = (results[3,:-1] * self.params.params_time[self.t_list[0]:-1,4]).flatten()
+        return results.transpose() 
                 
     def solve(self):
         t_start = int(self.t_list[0])
@@ -340,7 +388,7 @@ class SUIHTER:
         bounds = Bounds( lower_b, upper_b )
         
         #local mimimization
-        result = minimize_parallel(self.error, params0, bounds=bounds,\
+        result = minimize_parallel(self.error_LS, params0, bounds=bounds,\
                 options={'ftol': 1e-15, 'maxfun':1000, 'maxiter':1000,'iprint':1})
         print('###########################################')
         print(result)
@@ -376,14 +424,34 @@ class SUIHTER:
         weightsE = weight/np.maximum(self.data['Daily_extinct'].values,one)
         weightsR = 0.1*weight/self.data['Recovered'].max()
 
-        errorL2 = ((errorI ** 2)*weightsI + 
-                   (errorH ** 2)*weightsH +
-                   (errorT ** 2)*weightsT +
-                   (errorNP ** 2)*weightsNP +
-                   (errorR ** 2)*weightsR +
-                   (errorE ** 2)*weightsE).sum() 
+        errorL2 = np.array([(errorI ** 2*weightsI).sum(),
+                            (errorH ** 2*weightsH).sum(), 
+                            (errorT ** 2*weightsT).sum(), 
+                            (errorNP ** 2*weightsNP).sum(), 
+                            (errorR ** 2*weightsR).sum(), 
+                            (errorE ** 2*weightsE).sum()]) 
 
-        return np.sqrt(errorL2)
+        return errorL2
+    
+    def error_LS(self, params):
+        error = self.error(params)
+        return np.sqrt(error.sum())
+
+    def error_MCMC(self, params, data):
+        t_list = data.xdata[0].squeeze()
+        self.t_list = t_list.copy()
+        self.params.params_time[self.t_list[0]:self.t_list[-1]+1,3] = self.params.omegaI_vec[self.t_list[0]:self.t_list[-1]+1]*(1+params[-4])
+        self.params.params_time[self.t_list[0]:self.t_list[-1]+1,4] = self.params.omegaH_vec[self.t_list[0]:self.t_list[-1]+1]*(1+params[-3])
+        
+        Y0 = data.ydata[0].squeeze()
+
+        self.Y0 = Y0.copy()
+        self.Y0[1] *= params[-2]
+        self.Y0[7] *= params[-1]
+        self.Y0[0] = self.Pop - self.Y0[1:].sum()
+        
+        return self.error(params[:-4])
+
 
     def postprocessRd(self):
         rho_I, rho_H, rho_T = self.params.params_time[:, 6:9].transpose()
@@ -420,7 +488,7 @@ class SUIHTER:
         
         results[:3] = codes, dates, times
         results[3:3+Nc] = self.Y.reshape(Nc, len(times))
-        results[3+Nc] = self.R_d[self.t_list[0]].flatten() 
+        results[3+Nc] = self.R_d[self.t_list[0]:].flatten() 
         results[4+Nc,0] = self.data[self.data['time'] == self.t_list[0]]['New_positives'].values
         results[4+Nc,1:] = (self.Y[1,:-1] * self.params.params_time[self.t_list[0]+1:,2]).flatten() 
         results[5+Nc,0] = self.data[self.data['time'] == self.t_list[0]]['New_threatened'].values
