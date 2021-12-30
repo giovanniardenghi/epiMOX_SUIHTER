@@ -61,7 +61,6 @@ def MCMC_postprocess(ResPath, nsample=500, burnin=None, forecast=True, scenario=
     # Calculate intervals
     interval = calculate_intervals(chain, ResultsDict, data, model_solver.model_MCMC, nsample=nsample, waitbar=True)
 
-    print(interval[0]['credible'].shape)
     day_0 = pd.to_datetime(DPC_ndays)
     case = interval[-2]['credible']
     hospitalizations = interval[2]['credible'] * model_solver.params.params_time[-1,3]

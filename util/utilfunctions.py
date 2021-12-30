@@ -1,6 +1,7 @@
 import os.path
 import zipfile
 import pandas as pd
+import numpy as np
 
 def zipdir(path, ziph):
     # ziph is zipfile handle
@@ -62,4 +63,37 @@ def correct_data(eData, country):
                                       comp_to_old[row['Guariti']].replace(' ', '_').lower()).reset_index().rename(
             columns={'index': 'data'})
     return eData
+
+def estimate_IFR(country, Pop):
+    day_ISS_data = pd.to_datetime('2020-12-08')
+    IFR_age = np.array([0.005, 0.015, 0.035, 0.08, 0.2, 0.49, 1.205, 2.96, 7.26, 17.37])/100
+    m1=[1, 1, 1, 1, 0.848, 0.848, 0.697, 0.697, 0.545, 0.545]
+    m2=[1, 1, 1, 1, 0.553, 0.553, 0.787, 0.787, 0.411, 0.411]
+    vaccini_by_age = pd.read_csv("https://raw.githubusercontent.com/giovanniardenghi/dpc-covid-data/main/data/vaccini_regioni/"+country.replace(' ','%20')+"_age.csv")
+    vaccini_by_age['data'] = pd.to_datetime(vaccini_by_age.data)
+    vaccini_by_age = [v.set_index('data').reindex(pd.date_range(day_ISS_data,max(v.data))).fillna(0) for i,v in vaccini_by_age.groupby('eta')]
+    pop_age = np.array([8.4, 9.6, 10.3, 11.7, 15.3, 15.4, 12.2, 9.9, 5.9, 1.3])/100 * Pop
+    age = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95]
+    infected_age = pd.read_csv('https://raw.githubusercontent.com/giovanniardenghi/dpc-covid-data/main/SUIHTER/stato_clinico_all_ages.csv')
+    infected_age['Data'] = pd.to_datetime(infected_age.Data)
+
+    infected_age = [v.set_index('Data') for i,v in infected_age.groupby('Età')]
+    IFR_t = pd.Series(np.zeros(len(infected_age[0].index)),index=infected_age[0].index)
+    for i,IFR in enumerate(IFR_age):
+        if i==0:
+            IFR_t += infected_age[0].Infected * IFR_age[0]
+        else:
+            IFR_t += (infected_age[i].Infected * IFR_age[i] * (pop_age[i]-vaccini_by_age[i-1].prima_dose.cumsum()) +\
+                     infected_age[i].Infected * IFR_age[i] * m1[i] * (vaccini_by_age[i-1].prima_dose.cumsum() - vaccini_by_age[i-1].seconda_dose.cumsum()) +\
+                     infected_age[i].Infected * IFR_age[i] * m2[i] *  vaccini_by_age[i-1].seconda_dose.cumsum()) / pop_age[i]
+    return IFR_t
+
+
+def estimate_CFR(eData):
+    window = 7
+    deltaD = eData['deceduti'].diff(periods=2*window).shift(-window-13)
+    deltaR = eData['dimessi_guariti'].diff(periods=2*window).shift(-window-13)
+    CFR_t = deltaD/(deltaD+deltaR)
+    return CFR_t
+
 

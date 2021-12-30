@@ -16,7 +16,7 @@ class SUIHTER:
         #        self.R, self.V1, self.V2, self.V2p = Y0
         self.Y0 = Y0
         # Y: Nc x T x Ns
-        self.Y = np.zeros((len(Y0), len(t_list)))
+        self.Y = np.zeros((len(Y0), t_list[-1]+1))
         #initialize parameters
         self.params = params
         self.Ns = Pop.size
@@ -52,8 +52,10 @@ class SUIHTER:
         self.sigma1v = self.sigma2v = self.sigma2pv = 0
         self.variant_factor = self.kappa1 = self.kappa2 = self.xi = 0
 
-        self.R_d = np.zeros((t_list[-1]+1, self.Ns))
-        self.Sfrac = np.zeros((t_list[-1]+1, self.Ns))
+        self.R_d = np.zeros((t_list[-1]+1, self.Ns)).squeeze()
+        self.Sfrac = np.zeros((t_list[-1]+1, self.Ns)).squeeze()
+
+        self.forecast = False
         
         self.Pop = Pop
 
@@ -103,10 +105,10 @@ class SUIHTER:
         dV2S = dV2 * self.Sfrac[t_int]
         dV2pS =self.dV2vec[t_int-150] *  self.Sfrac[t_int-150] if t>=150 else 0
         dV3S = dV3 * self.Sfrac[t_int] 
-        #if self.t_list[0]>0:
+        #if self.forecast:
         #    dV3S *= 2
 
-        if self.t_list[0] > 0:
+        if self.forecast:
             totV1 = self.dV1vec[:t_int+1].sum()
             totV2 = self.dV2vec[:t_int+1].sum()
             totV1ini = self.dV1vec[:int(self.params.dataEnd)+1].sum()
@@ -130,42 +132,42 @@ class SUIHTER:
             casesV1ini = self.sigma1*popV1ini/casesini
             casesV2ini = self.sigma2*popV2ini/casesini
 
-        tamponi = self.tamponi[t_int-1] + self.tamponi[t_int]
-        S_non_vaccinabili = (self.Pop - self.maxV) * self.Sfrac[t_int]
-        S_vaccinabili = S - S_non_vaccinabili
-        S_gp = tamponi * self.Sfrac[t_int]
-        S_no_gp = S_vaccinabili - S_gp
+            tamponi = self.tamponi[t_int-1] + self.tamponi[t_int]
+            S_non_vaccinabili = (self.Pop - self.maxV) * self.Sfrac[t_int]
+            S_vaccinabili = S - S_non_vaccinabili
+            S_gp = tamponi * self.Sfrac[t_int]
+            S_no_gp = S_vaccinabili - S_gp
 
-        # attuale
-        beta_gp =       0.0404
-        beta_test =     0.0326
-        beta_novax =    0.0197
-                              
-        # gialla              
-        beta_gp_y =     0.036 #0.0404
-        beta_test_y =   0.029 #0.0318
-        beta_novax_y =  0.017 #0.0195
-                              
-        # arancione           
-        beta_gp_a =     0.032#0.0399
-        beta_test_a =   0.026#0.0296
-        beta_novax_a =  0.015#0.0189
-                              
-        # rossa               
-        beta_gp_r =     0.0159
-        beta_test_r =   0.0149
-        beta_novax_r =  0.0079
+            # attuale
+            beta_gp =       0.0404
+            beta_test =     0.0326
+            beta_novax =    0.0197
+                                  
+            # gialla              
+            beta_gp_y =     0.036 #0.0404
+            beta_test_y =   0.029 #0.0318
+            beta_novax_y =  0.017 #0.0195
+                                  
+            # arancione           
+            beta_gp_a =     0.032#0.0399
+            beta_test_a =   0.026#0.0296
+            beta_novax_a =  0.015#0.0189
+                                  
+            # rossa               
+            beta_gp_r =     0.0159
+            beta_test_r =   0.0149
+            beta_novax_r =  0.0079
 
-        vax = V1 + V2 + V2p
-        betaV_now = betaV_new = beta_gp
-        betaS_now = (beta_gp * (S - S_no_gp) + beta_novax * S_no_gp) / S
-        betaS_new = (beta_test * S_gp + beta_gp * S_non_vaccinabili + beta_novax * S_no_gp) / S
-        betaS_now_y = (beta_gp * (S - S_no_gp) + beta_novax_y * S_no_gp) / S
-        betaS_now_a = (beta_gp * (S - S_no_gp) + beta_novax_a * S_no_gp) / S
-        betaS_now_r = (beta_gp_r * (S - S_no_gp) + beta_novax_r * S_no_gp) / S
-        betaS_new_y = (beta_test_y * S_gp + beta_gp * S_non_vaccinabili + beta_novax_y * S_no_gp) / S
-        betaS_new_a = (beta_test_a * S_gp + beta_gp * S_non_vaccinabili + beta_novax_a * S_no_gp) / S
-        betaS_new_r = (beta_test_r * S_gp + beta_gp_r * S_non_vaccinabili + beta_novax_r * S_no_gp) / S
+            vax = V1 + V2 + V2p
+            betaV_now = betaV_new = beta_gp
+            betaS_now = (beta_gp * (S - S_no_gp) + beta_novax * S_no_gp) / S
+            betaS_new = (beta_test * S_gp + beta_gp * S_non_vaccinabili + beta_novax * S_no_gp) / S
+            betaS_now_y = (beta_gp * (S - S_no_gp) + beta_novax_y * S_no_gp) / S
+            betaS_now_a = (beta_gp * (S - S_no_gp) + beta_novax_a * S_no_gp) / S
+            betaS_now_r = (beta_gp_r * (S - S_no_gp) + beta_novax_r * S_no_gp) / S
+            betaS_new_y = (beta_test_y * S_gp + beta_gp * S_non_vaccinabili + beta_novax_y * S_no_gp) / S
+            betaS_new_a = (beta_test_a * S_gp + beta_gp * S_non_vaccinabili + beta_novax_a * S_no_gp) / S
+            betaS_new_r = (beta_test_r * S_gp + beta_gp_r * S_non_vaccinabili + beta_novax_r * S_no_gp) / S
 
         StoUb = S * beta_Ub * Ub / self.Pop
         StoUv = S * beta_Uv * Uv / self.Pop
@@ -175,17 +177,17 @@ class SUIHTER:
         V2toUv = self.sigma2v * V2 * beta_Uv * Uv / self.Pop
         V2ptoUb = self.sigma2p * V2p * beta_Ub * Ub / self.Pop
         V2ptoUv = self.sigma2pv * V2p * beta_Uv * Uv / self.Pop
+        
+        if self.forecast:
+            maxH = 57705
+            maxT = 9044
 
-        maxH = 57705
-        maxT = 9044
+            U = Ub + Uv
+            current_variant_prevalence = Uv/U
 
-        U = Ub + Uv
-        current_variant_prevalence = Uv/U
+            tauratioS = 1
+            tauratio = 1
 
-        tauratioS = 1
-        tauratio = 1
-
-        if self.t_list[0]>0:
             # Nessuno screnario 
             if self.scenario==None:
                 pass
@@ -245,7 +247,6 @@ class SUIHTER:
                     else:
                         tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_r / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*betaS_new_a / betaS_new
                         tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_r / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*beta_gp_a / betaV_new
-                    print(t, ' - Rossa', self.inYellow, self.inOrange, self.inRed, self.timeNPI, tauratioS)
                 elif (delta * U > 150/1e5/7*self.Pop) and (H > 0.3*maxH) and (T > 0.2*maxT):
                     if self.inOrange == False:
                         self.inRed = False
@@ -258,7 +259,6 @@ class SUIHTER:
                     else:
                         tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_y / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*betaS_new_y / betaS_new
                         tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_y / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*beta_gp_y / betaV_new
-                    print(t, ' - Arancione', self.inYellow, self.inOrange, self.inRed, self.timeNPI, tauratioS)
                 elif (delta * U > 150/1e5/7*self.Pop) or ((delta * U > 50/1e5/7*self.Pop) and (H > 0.15*maxH) and (T > 0.1*maxT)):
                     if self.inYellow == False:
                         self.inRed = False
@@ -271,7 +271,6 @@ class SUIHTER:
                     else:
                         tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_y / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*1
                         tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_y / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*1
-                    print(t, ' - Gialla', self.inYellow, self.inOrange, self.inRed, self.timeNPI, tauratioS)
             StoUb *=   tauratioS
             StoUv *=   tauratioS
             V1toUb *=  tauratio
@@ -286,11 +285,11 @@ class SUIHTER:
         UbtoR = rho_U * Ub
         UvtoR = rho_U * Uv
         ItoH = omega_I * I * ((casesS + self.h1 * casesV1 + self.h2 * casesV2)/(casesSini + self.h1 * casesV1ini + self.h2 * casesV2ini) *
-                              (1 - self.xi * current_variant_prevalence)/(1-self.xi*self.variant_prevalence_hosp) if self.t_list[0] > 0 else 1)
+                              (1 - self.xi * current_variant_prevalence)/(1-self.xi*self.variant_prevalence_hosp) if self.forecast else 1)
         ItoR = rho_I*I
-        ItoE = gamma_I * I * ((casesS + self.m1 * casesV1 + self.m2 * casesV2)/(casesSini + self.m1 * casesV1ini + self.m2 * casesV2ini) if self.t_list[0] > 0 else 1)
+        ItoE = gamma_I * I * ((casesS + self.m1 * casesV1 + self.m2 * casesV2)/(casesSini + self.m1 * casesV1ini + self.m2 * casesV2ini) if self.forecast else 1)
         HtoR = rho_H*H
-        HtoT = omega_H * H * ((casesS + self.t1 * casesV1 + self.t2 * casesV2)/(casesSini + self.t1 * casesV1ini + self.t2 * casesV2ini) if self.t_list[0] > 0 else 1)
+        HtoT = omega_H * H * ((casesS + self.t1 * casesV1 + self.t2 * casesV2)/(casesSini + self.t1 * casesV1ini + self.t2 * casesV2ini) if self.forecast else 1)
         HtoE = gamma_H * H
         TtoH = theta_T * T
         TtoE = gamma_T * T
@@ -332,9 +331,9 @@ class SUIHTER:
         
         self.solve()
         
-        forecast = data.user_defined_object[0][0]
+        self.forecast = data.user_defined_object[0][0]
 
-        if forecast:
+        if self.forecast:
             variant = data.user_defined_object[0][1]
             variant_prevalence = data.user_defined_object[0][2]
             if variant:
@@ -368,8 +367,9 @@ class SUIHTER:
         t_start = int(self.t_list[0])
         self.params.compute_param_over_time(int(self.t_list[-1]))
         self.Y[:,t_start] = self.Y0 
-        self.R_d[t_start] = self.data.Recovered.iloc[t_start]
-        self.Sfrac[t_start] = self.Y0[0] / (self.Y0[0] + self.Y0[-4] - self.R_d[t_start])
+        if not self.forecast and t_start==0:
+            self.R_d[t_start] = self.data.Recovered.iloc[t_start]
+            self.Sfrac[t_start] = self.Y0[0] / (self.Y0[0] + self.Y0[-4] - self.R_d[t_start])
         for i,t in enumerate(self.t_list[:-1]):
             y0 = self.Y[...,i+t_start]
             self.R_d[t_start + i + 1] = self.R_d[t_start + i] + (y0[-8:-6] * self.params.params_time[t_start + i + 1,6:8]).sum()

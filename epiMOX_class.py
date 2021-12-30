@@ -30,7 +30,7 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
 
     model, Nc, country, param_type, param_file, Tf, dt, save_code, by_age, edges_file, \
         borders_file, map_file, mobility, mixing, estim_param, DPC_start,\
-        DPC_end, data_ext_deg, ext_deg, out_type, only_forecast, scenario\
+        DPC_end, data_ext_deg, ext_deg, out_type, restart_file, day_restart, only_forecast, scenario\
         = ld.parsedata(DataDic)
     
     if ndays:
@@ -117,35 +117,9 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
     
     eData = correct_data(eData, country)
     
-
-    window = 7 
-    deltaD = eData['deceduti'].diff(periods=2*window).shift(-window-13)
-    deltaR = eData['dimessi_guariti'].diff(periods=2*window).shift(-window-13)
-    CFR_t = deltaD/(deltaD+deltaR)
-    day_ISS_data = pd.to_datetime('2020-12-08')
-    IFR_age = np.array([0.005, 0.015, 0.035, 0.08, 0.2, 0.49, 1.205, 2.96, 7.26, 17.37])/100
-    m1=[1, 1, 1, 1, 0.848, 0.848, 0.697, 0.697, 0.545, 0.545]
-    m2=[1, 1, 1, 1, 0.553, 0.553, 0.787, 0.787, 0.411, 0.411]
-    vaccini_by_age = pd.read_csv("https://raw.githubusercontent.com/giovanniardenghi/dpc-covid-data/main/data/vaccini_regioni/"+country.replace(' ','%20')+"_age.csv")
-    vaccini_by_age['data'] = pd.to_datetime(vaccini_by_age.data)
-    vaccini_by_age = [v.set_index('data').reindex(pd.date_range(day_ISS_data,max(v.data))).fillna(0) for i,v in vaccini_by_age.groupby('eta')]
-    pop_age = np.array([8.4, 9.6, 10.3, 11.7, 15.3, 15.4, 12.2, 9.9, 5.9, 1.3])/100 * Pop
-    age = [5, 15, 25, 35, 45, 55, 65, 75, 85, 95]
-    infected_age = pd.read_csv('https://raw.githubusercontent.com/giovanniardenghi/dpc-covid-data/main/SUIHTER/stato_clinico_all_ages.csv')
-    infected_age['Data'] = pd.to_datetime(infected_age.Data)
-
-    infected_age = [v.set_index('Data') for i,v in infected_age.groupby('Età')]
-    IFR_t = pd.Series(np.zeros(len(infected_age[0].index)),index=infected_age[0].index)
-    for i,IFR in enumerate(IFR_age):
-        if i==0:
-            IFR_t += infected_age[0].Infected * IFR_age[0]
-        else:
-            IFR_t += (infected_age[i].Infected * IFR_age[i] * (pop_age[i]-vaccini_by_age[i-1].prima_dose.cumsum()) +\
-                     infected_age[i].Infected * IFR_age[i] * m1[i] * (vaccini_by_age[i-1].prima_dose.cumsum() - vaccini_by_age[i-1].seconda_dose.cumsum()) +\
-                     infected_age[i].Infected * IFR_age[i] * m2[i] *  vaccini_by_age[i-1].seconda_dose.cumsum()) / pop_age[i]
-
-    Delta_t = np.clip(IFR_t.loc[day_ISS_data:day_end].values/CFR_t[int((day_ISS_data-epi_start).days):int((day_end-epi_start).days)+1],0,1)
-    Delta_t =  (pd.Series(Delta_t[int((day_init-day_ISS_data).days):int((day_end-day_ISS_data).days)+1]).rolling(center=True,window=7,min_periods=1).mean())/8
+    IFR_t = estimate_IFR(country, Pop)
+    CFR_t = estimate_CFR(eData)
+    Delta_t = params.compute_delta(IFR_t, CFR_t, day_end)
 
     UD = eData['nuovi_positivi'].rolling(center=True,window=7,min_periods=1).mean()/Delta_t
     UD.index=pd.date_range('2020-02-24',pd.to_datetime('2020-02-24')+pd.Timedelta(UD.index[-1],'days'))
@@ -155,7 +129,6 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
     eData = converter(model, eData, country, Nc)
     eData = eData.reset_index(drop=True)
     
-    params.delta = si.interp1d(range(int((day_end-day_init).days)-19),Delta_t[:-20],fill_value="extrapolate",kind='nearest')
     if country=='Italia':
         ric = pd.read_csv('https://raw.githubusercontent.com/floatingpurr/covid-19_sorveglianza_integrata_italia/main/data/latest/ricoveri.csv')
         #ric = pd.read_csv('https://raw.githubusercontent.com/floatingpurr/covid-19_sorveglianza_integrata_italia/main/data/2021-10-17/ricoveri.csv')
@@ -200,7 +173,8 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
     initI['Undetected'] = UD.loc[dates].mean()
 
     Recovered = (1/IFR_t.loc[day_init]-1)*initI['Extinct'].sum()
-    initI['Recovered'] = Recovered#*initI['Recovered']/initI['Recovered'].sum()
+    initI['Recovered'] = Recovered
+
 
     day_init_vaccines = day_init - pd.Timedelta(14, 'days')
     vaccines = pd.read_csv('https://raw.githubusercontent.com/giovanniardenghi/dpc-covid-data/main/data/vaccini_regioni/'+country+'.csv')
@@ -220,35 +194,46 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
     tamponi = gp_from_test.issued_for_tests.values
 
     ### Init compartments
-    Y0 = np.zeros((Nc+3+1,Ns)).squeeze() # 3 vaccinated compartments
-    Y0[0] = Pop
     # Init compartment for the "proven cases"
-    if model == 'SUIHTER':
-        Y0[0] = Y0[0] \
-                    - (initI['Undetected'].values\
-                    + initI['Isolated'].values\
-                    + initI['Hospitalized'].values\
-                    + initI['Threatened'].values\
-                    + initI['Extinct'].values
-                    + initI['Recovered'].values
-                    + vaccines_init['prima_dose'])
-        Y0[1] = initI['Undetected'].values
-        Y0[2] = 0 
-        Y0[3] = initI['Isolated'].values
-        Y0[4] = initI['Hospitalized'].values
-        Y0[5] = initI['Threatened'].values
-        Y0[6] = initI['Extinct'].values
-        Y0[7] = initI['Recovered'].values
-        Y0[8] = vaccines_init['prima_dose']-vaccines_init['seconda_dose'] 
-        Y0[9] = vaccines_init['seconda_dose']
-        Y0[10] = 0 
-    elif model == 'SEIRD':
-        Y0[0:Ns] -= (initI['Infected'].values
-                    + initI['Recovered'].values
-                    + initI['Dead'].values)
-        Y0[2*Ns:3*Ns] = initI['Infected'].values
-        Y0[3*Ns:4*Ns] = initI['Recovered'].values
-        Y0[4*Ns:5*Ns] = initI['Dead'].values
+    Y0 = np.zeros((Nc+3+1,Ns)).squeeze() # 3 vaccinated compartments
+    if restart_file:
+        df_restart = pd.read_hdf(restart_file)
+        init_restart = df_restart[df_restart['date']<=day_restart].iloc[:,3:14].values
+        Y0[:2] = init_restart[-1,:2]
+        Y0[2] = 0
+        Y0[3:] = init_restart[-1,2:-1]
+        R_d = init_restart[:,-1]
+        Sfrac = np.zeros(init_restart.shape[0])
+        Sfrac[0] = init_restart[0,0] / ( init_restart[0,0] + init_restart[0,-5] - init_restart[0,-1] )
+        Sfrac[1:] = init_restart[:-1,0] / ( init_restart[:-1,0] + init_restart[:-1,-5] - init_restart[:-1,-1] )
+    else:
+        Y0[0] = Pop
+        if model == 'SUIHTER':
+            Y0[0] = Y0[0] \
+                        - (initI['Undetected'].values\
+                        + initI['Isolated'].values\
+                        + initI['Hospitalized'].values\
+                        + initI['Threatened'].values\
+                        + initI['Extinct'].values
+                        + initI['Recovered'].values
+                        + vaccines_init['prima_dose'])
+            Y0[1] = initI['Undetected'].values
+            Y0[2] = 0 
+            Y0[3] = initI['Isolated'].values
+            Y0[4] = initI['Hospitalized'].values
+            Y0[5] = initI['Threatened'].values
+            Y0[6] = initI['Extinct'].values
+            Y0[7] = initI['Recovered'].values
+            Y0[8] = vaccines_init['prima_dose']-vaccines_init['seconda_dose'] 
+            Y0[9] = vaccines_init['seconda_dose']
+            Y0[10] = 0 
+        elif model == 'SEIRD':
+            Y0[0:Ns] -= (initI['Infected'].values
+                        + initI['Recovered'].values
+                        + initI['Dead'].values)
+            Y0[2*Ns:3*Ns] = initI['Infected'].values
+            Y0[3*Ns:4*Ns] = initI['Recovered'].values
+            Y0[4*Ns:5*Ns] = initI['Dead'].values
     ### Solve
 
     # Create transport matrix
@@ -273,7 +258,10 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
 
     PopIn = DO.sum(axis=1)
 
-    T0 = 0
+    if restart_file:
+        T0 = (day_restart - day_init).days
+    else:
+        T0 = 0
    
     time_list = np.arange(T0,Tf+1)
 
@@ -295,6 +283,8 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
         print('  Estimating...')
         model_solver = model_class(Y0, params, time_list[:(day_end-day_init).days+1], day_init, day_end, eData, Pop,
                        by_age, geocodes, vaccines, maxV, out_path, tamponi=tamponi, scenario=None, out_type=out_type)
+        if restart_file:
+            model_solver.Sfrac[:T0+1] = Sfrac
         model_solver.estimate()
         print('  ...done!')
     print('  Solving...')
@@ -307,6 +297,9 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
 
     model_solver = model_class(Y0, params, time_list, day_init, day_end, eData, Pop,
                        by_age, geocodes, vaccines, maxV, out_path, tamponi=tamponi, scenario=scenario, out_type=out_type)
+    if restart_file:
+        model_solver.R_d[:T0+1] = R_d
+        model_solver.Sfrac[:T0+1] = Sfrac
     
     model_solver.solve()
 
@@ -346,6 +339,7 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
 
         model_solver.Y0 = Y0
         model_solver.t_list = time_list
+        model_solver.forecast = True
         model_solver.solve()
     #model_solver.computeRt()
 

@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+import pandas as pd
 
 # Read data file and build a dictionary
 def readdata(fileName):
@@ -80,6 +81,12 @@ def parsedata(Data):
 
     estim_param, DPC_start, DPC_ndays = _parsedata_estim(Data)
 
+    if 'restart_file' in Data.keys():
+        restart_file = Data['restart_file']
+        day_restart = pd.to_datetime(Data['day_restart']) 
+    else:
+        restart_file = day_restart = None
+
     if 'only_forecast' in Data.keys():
         only_forecast = bool(int(Data['only_forecast']))
     else:
@@ -91,7 +98,7 @@ def parsedata(Data):
 
     return(model, Nc, country, param_type, param_file, Tf, dt, save_code, by_age, edges_file, \
            borders_file, map_file, mobility, mixing, estim_param, DPC_start,\
-           DPC_ndays, data_ext_deg, ext_deg, out_type, only_forecast, scenario)
+           DPC_ndays, data_ext_deg, ext_deg, out_type, restart_file, day_restart, only_forecast, scenario)
 
 # Parse the dictionary: plot
 def parsedata_plot(Data):
