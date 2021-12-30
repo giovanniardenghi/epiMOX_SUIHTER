@@ -281,10 +281,12 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
 
     if estim_param:
         print('  Estimating...')
-        model_solver = model_class(Y0, params, time_list[:(day_end-day_init).days+1], day_init, day_end, eData, Pop,
+        start_calibration_day = day_restart if day_restart else day_init
+        model_solver = model_class(Y0, params, time_list[:(day_end-start_calibration_day).days+1], day_init, day_end, eData.iloc[T0:], Pop,
                        by_age, geocodes, vaccines, maxV, out_path, tamponi=tamponi, scenario=None, out_type=out_type)
         if restart_file:
             model_solver.Sfrac[:T0+1] = Sfrac
+            model_solver.R_d[:T0+1] = R_d
         model_solver.estimate()
         print('  ...done!')
     print('  Solving...')
@@ -295,7 +297,7 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
     params.forecast(eData['time'].max(),Tf, ext_deg,scenarios=scenari)
     params.extrapolate_scenario()
 
-    model_solver = model_class(Y0, params, time_list, day_init, day_end, eData, Pop,
+    model_solver = model_class(Y0, params, time_list, day_init, day_end, eData.iloc[T0:], Pop,
                        by_age, geocodes, vaccines, maxV, out_path, tamponi=tamponi, scenario=scenario, out_type=out_type)
     if restart_file:
         model_solver.R_d[:T0+1] = R_d

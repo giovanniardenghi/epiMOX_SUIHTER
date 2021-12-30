@@ -400,7 +400,7 @@ class SUIHTER:
     def error(self, params0):
         self.params.params[self.params.getMask()] = params0
         self.solve()
-        _, Ub, Uv, I, H, T, E, R, _, _, _ = self.Y
+        _, Ub, Uv, I, H, T, E, R, _, _, _ = self.Y[:,self.t_list]
         U = Ub + Uv
 
         dE = np.diff(E, not (self.Ns - 1), prepend=E[0]-self.data['Daily_extinct'].iloc[0])
@@ -410,7 +410,7 @@ class SUIHTER:
         errorI = I.flatten('F') - self.data['Isolated'].values
         errorH = H.flatten('F') - self.data['Hospitalized'].values
         errorT = T.flatten('F') - self.data['Threatened'].values
-        errorR = self.R_d.flatten('F') - self.data['Recovered'].values
+        errorR = self.R_d[self.t_list].flatten('F') - self.data['Recovered'].values
         errorE = dE - self.data['Daily_extinct'].values
         errorNP = (self.params.params_time[self.t_list,2] * U).flatten('F') - self.data['New_positives'].rolling(window=7,min_periods=1,center=True).mean().values
 
