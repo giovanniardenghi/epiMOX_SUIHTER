@@ -10,6 +10,11 @@ sed "s/TODAY/${today}/g" Tests/Dashboard/Calibration/input.inp_template > Tests/
 python3 epiMOX_class.py Tests/Dashboard/Calibration 
 cp Tests/Dashboard/Calibration/param_est_d$today-Italia.csv Tests/Dashboard/Calibration/param_est_latest.csv
 
+#Calibrazione MCMC
+#sed "s/TODAY/${today}/g" Tests/Dashboard/Calibration/input.inp_templateMCMC > Tests/Dashboard/Calibration/input.inp
+#python3 epiMOX_MCMC_class.py Tests/Dashboard/Calibration/ 300000
+#python3 MCMC_postprocess.py Tests/Dashboard/Calibration/ 10000 150000
+
 for scenario in Base Controlled Yellow Orange Red
 do
 sed "s/TODAY/${today}/g" Tests/Dashboard/$scenario/input.inp_template > Tests/Dashboard/$scenario/input.inp
