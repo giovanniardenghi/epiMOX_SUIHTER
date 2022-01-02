@@ -16,7 +16,7 @@ class SUIHTER:
         #        self.R, self.V1, self.V2, self.V2p = Y0
         self.Y0 = Y0
         # Y: Nc x T x Ns
-        self.Y = np.zeros((len(Y0), t_list[-1]+1))
+        self.Y = np.zeros((len(Y0), t_list[-1]+1, Pop.size)).squeeze()
         #initialize parameters
         self.params = params
         self.Ns = Pop.size

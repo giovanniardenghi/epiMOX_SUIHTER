@@ -128,15 +128,15 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
     eData = eData.reset_index(drop=True)
     eData = converter(model, eData, country, Nc)
     eData = eData.reset_index(drop=True)
-    
     if country=='Italia':
         ric = pd.read_csv('https://raw.githubusercontent.com/floatingpurr/covid-19_sorveglianza_integrata_italia/main/data/latest/ricoveri.csv')
         #ric = pd.read_csv('https://raw.githubusercontent.com/floatingpurr/covid-19_sorveglianza_integrata_italia/main/data/2021-10-17/ricoveri.csv')
         ric = ric.iloc[:-1]
         ric['DATARICOVERO1'] = pd.to_datetime(ric['DATARICOVERO1'],format='%d/%m/%Y')
         ric.set_index('DATARICOVERO1',inplace=True)
-        omegaI = pd.Series(pd.to_numeric((ric.loc[day_init:day_end-pd.Timedelta(3,'day'),'RICOVERI']).rolling(center=True,window=7,min_periods=1).mean().values)/eData['Isolated'].values[:-3]).rolling(center=True,window=7,min_periods=1).mean()
-        params.omegaI = si.interp1d(range((day_end-day_init).days-2),omegaI,fill_value='extrapolate',kind='nearest')
+        offset = 3 if day_end in ric.index else 4
+        omegaI = pd.Series(pd.to_numeric((ric.loc[day_init:day_end-pd.Timedelta(offset,'day'),'RICOVERI']).rolling(center=True,window=7,min_periods=1).mean().values)/eData['Isolated'].values[:-offset]).rolling(center=True,window=7,min_periods=1).mean()
+        params.omegaI = si.interp1d(range((day_end-day_init).days-offset+1),omegaI,fill_value='extrapolate',kind='nearest')
     else:
         params.omegaI_vec = np.loadtxt('omegaI.txt')
     omegaH = pd.Series(eData['New_threatened'].rolling(center=True,window=7,min_periods=1).mean().values/eData['Hospitalized'].values)#.rolling(center=True,window=7,min_periods=1).mean()

@@ -39,8 +39,6 @@ def MCMC_postprocess(ResPath, nsample=500, burnin=None, forecast=True, scenario=
     t_list = model_solver.t_list.copy()
     Y0 = model_solver.Y0.copy()
 
-    epi_start = datetime.date(year=2020, month=2, day=24)
-
     day_init = pd.to_datetime(DPC_start)
     day_end = pd.to_datetime(DPC_ndays)
 
