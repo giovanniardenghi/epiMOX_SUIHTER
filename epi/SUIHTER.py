@@ -94,6 +94,8 @@ class SUIHTER:
         dV1 = self.dV1vec[t_int]
         dV2 = self.dV2vec[t_int]
         dV3 = self.dV3vec[t_int]
+        #if t_int >= 298:
+        #    dV3 *= 2
 
         #t_vac = t_int -1 if t>=1 else t_int
         #print(self.Y[0,t_vac],self.Y[-4,t_vac],self.R_d[t_int])
@@ -108,7 +110,9 @@ class SUIHTER:
         #if self.forecast:
         #    dV3S *= 2
 
-        if self.forecast:
+        current_variant_prevalence = self.variant_prevalence
+
+        if self.forecast:# or t_int >= 298:
             totV1 = self.dV1vec[:t_int+1].sum()
             totV2 = self.dV2vec[:t_int+1].sum()
             totV1ini = self.dV1vec[:int(self.params.dataEnd)+1].sum()
@@ -271,25 +275,29 @@ class SUIHTER:
                     else:
                         tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_y / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*1
                         tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_y / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*1
-            StoUb *=   tauratioS
-            StoUv *=   tauratioS
-            V1toUb *=  tauratio
-            V1toUv *=  tauratio
-            V2toUb *=  tauratio
-            V2toUv *=  tauratio
-            V2ptoUb *= tauratio
-            V2ptoUv *= tauratio
+            isolation_effect = 1 - I * 3 /self.Pop
+            StoUb *=   tauratioS * isolation_effect
+            StoUv *=   tauratioS * isolation_effect
+            V1toUb *=  tauratio * isolation_effect
+            V1toUv *=  tauratio * isolation_effect
+            V2toUb *=  tauratio * isolation_effect
+            V2toUv *=  tauratio * isolation_effect
+            V2ptoUb *= tauratio * isolation_effect
+            V2ptoUv *= tauratio * isolation_effect
 
         UbtoI = delta * Ub
         UvtoI = delta * Uv
         UbtoR = rho_U * Ub
         UvtoR = rho_U * Uv
-        ItoH = omega_I * I * ((casesS + self.h1 * casesV1 + self.h2 * casesV2)/(casesSini + self.h1 * casesV1ini + self.h2 * casesV2ini) *
-                              (1 - self.xi * current_variant_prevalence)/(1-self.xi*self.variant_prevalence_hosp) if self.forecast else 1)
-        ItoR = rho_I*I
-        ItoE = gamma_I * I * ((casesS + self.m1 * casesV1 + self.m2 * casesV2)/(casesSini + self.m1 * casesV1ini + self.m2 * casesV2ini) if self.forecast else 1)
-        HtoR = rho_H*H
-        HtoT = omega_H * H * ((casesS + self.t1 * casesV1 + self.t2 * casesV2)/(casesSini + self.t1 * casesV1ini + self.t2 * casesV2ini) if self.forecast else 1)
+        omega_I_factor = ((casesS + self.h1 * casesV1 + self.h2 * casesV2)/(casesSini + self.h1 * casesV1ini + self.h2 * casesV2ini) *
+                         (1 - self.xi * current_variant_prevalence)/(1-self.xi*self.variant_prevalence_hosp) if (self.forecast) else 1)
+        omega_H_factor = ((casesS + self.t1 * casesV1 + self.t2 * casesV2)/(casesSini + self.t1 * casesV1ini + self.t2 * casesV2ini) if (self.forecast) else 1)
+        gamma_I_factor = ((casesS + self.m1 * casesV1 + self.m2 * casesV2)/(casesSini + self.m1 * casesV1ini + self.m2 * casesV2ini) if (self.forecast) else 1)
+        ItoH = omega_I * I + omega_I * I * (omega_I_factor - 1)
+        ItoR = rho_I * I - omega_I * I * (omega_I_factor - 1) - gamma_I * I * (gamma_I_factor - 1)
+        ItoE = gamma_I * I + gamma_I * I * (gamma_I_factor - 1)
+        HtoR = rho_H*H - omega_H * H * (omega_H_factor - 1)
+        HtoT = omega_H * H + omega_H * H * (omega_H_factor - 1) 
         HtoE = gamma_H * H
         TtoH = theta_T * T
         TtoE = gamma_T * T
