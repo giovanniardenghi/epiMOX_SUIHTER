@@ -3,178 +3,140 @@ import os.path
 import numpy as np
 import pandas as pd
 import json
-import pickle as pl
-import datetime
 from epi import loaddata as ld
-from epi import models_test as md
-from epi import estimation as es
 from epi.convert import converter
-from epiMOX_test import epiMOX
-from epi.MCMC_test import model_fun_var_new as model_fun
-import matplotlib as mpl
-import matplotlib.pyplot as plt
+from epiMOX_class import epiMOX
 from pymcmcstat.MCMC import DataStructure
-from pymcmcstat import mcmcplot as mcp
-from pymcmcstat.propagation import calculate_intervals, plot_intervals, generate_quantiles
+from pymcmcstat.propagation import calculate_intervals, generate_quantiles
+import pymcmcstat.chain.ChainProcessing as chproc
 
 
-def MCMC_postprocess(ResPath,nsample=500,burnin=None,scenario=None):
-InputFileName = ResPath + '/input.inp'
+def MCMC_postprocess(ResPath, nsample=500, burnin=None, forecast=True, scenario=None):
+    InputFileName = ResPath + '/input.inp'
 
-if os.path.exists(InputFileName):
-    DataDic = ld.readdata(InputFileName)
-    epi_model = DataDic['model']
-else:
-    sys.exit('Error - Input data file ' + InputFileName + ' not found. Exit.')
-MCMCpath = ResPath + '/MCMC'	
-if os.path.exists(ResPath):
-    ResultsDict = json.load(open(MCMCpath + '/results_dict.json','r'))
-    ResultsDict['theta'] = np.array(ResultsDict['theta'])
-    chain = np.loadtxt(MCMCpath + '/chainfile.txt')
-    s2chain = np.loadtxt(MCMCpath + '/s2chainfile.txt')
-else:
-    sys.exit('Error - MCMC folder in ' + ResPath + ' not found. Exit.')
-DPC_start = DataDic['DPC_start']
-DPC_ndays = DataDic['DPC_end']
-country = DataDic['country']
-if country is None:
-    country = 'Italia'
-if burnin is None:
-    burnin = chain.shape[0]//5
+    if os.path.exists(InputFileName):
+        DataDic = ld.readdata(InputFileName)
+        epi_model = DataDic['model']
+    else:
+        sys.exit('Error - Input data file ' + InputFileName + ' not found. Exit.')
+    MCMCpath = ResPath + '/MCMC/'	
+    if os.path.exists(ResPath):
+        ResultsDict = chproc.load_serial_simulation_results(MCMCpath, extension='txt')
+        ResultsDict['theta'] = np.array(ResultsDict['theta'])
+        chain = ResultsDict['chain']
+        s2chain = ResultsDict['s2chain']
+    else:
+        sys.exit('Error - MCMC folder in ' + ResPath + ' not found. Exit.')
+    DPC_start = DataDic['DPC_start']
+    DPC_ndays = DataDic['DPC_end']
+    country = DataDic['country']
+    if country is None:
+        country = 'Italia'
+    if burnin is None:
+        burnin = chain.shape[0]//5
 
-chain = chain[burnin:,:]
-Ns, Nc, sol, model, params, Pop, DO, \
-        map_to_prov, dv1, dv2, dt = epiMOX(ResPath,scenari=scenario)
+    chain = chain[burnin:,:]
+    model_solver = epiMOX(ResPath,scenari=scenario)
+    t_list = model_solver.t_list.copy()
+    Y0 = model_solver.Y0.copy()
+    epi_start = pd.to_datetime('2021-02-24') 
 
-epi_start = datetime.date(year=2020, month=2, day=24)
+    day_init = pd.to_datetime(DPC_start)
+    day_end = pd.to_datetime(DPC_ndays)
 
-day_init = pd.to_datetime(DPC_start)
-day_end = pd.to_datetime(DPC_ndays) + pd.Timedelta(1,'day')
+    mask = model_solver.params.getMask()
 
-if country == 'Italia':
-    eData = pd.read_csv('https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-andamento-nazionale/dpc-covid19-ita-andamento-nazionale.csv')
-else:
-    eData = pd.read_csv('https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-regioni/dpc-covid19-ita-regioni.csv')
+    variant_prevalence = float(DataDic['variant_prevalence']) if 'variant_prevalence' in DataDic.keys() else 0
+    if 'variant' in DataDic.keys() and DataDic['variant']:
+        with open('util/variant_db.json') as variant_db:
+            variants = json.load(variant_db)
+        variant = variants[DataDic['variant']]
+    else:
+        variant = None
 
-Tf_data = pd.to_datetime(DataDic['Tf'])
-Tf = int((Tf_data-day_init).days)
-
-eData['data'] = pd.to_datetime(eData.data)
-#eData = eData[(eData["data"] >= day_init) & (eData["data"] <= Tf_data)]
-eData = eData[(eData["data"] >= day_init) & (eData["data"] < day_end)]
-eData = eData.reset_index(drop=True)
-eDataG = converter(epi_model, eData, country, Nc)
-eDataG = eDataG.reset_index(drop=True)
-#Y0 = [sol[x * Ns:(x + 1) * Ns].sum() for x in range(Nc)]
-Y0 = sol
-
-
-R_d = np.zeros(Tf+1)
-R_d[0] = eDataG['Recovered'].iloc[0]
-l_args = (params, Pop, DO, map_to_prov, dv1, dv2, R_d)
-if epi_model == 'SEIRD':
-    dead = eDataG.groupby('time').sum()['Dead'].values
-    obs = dead
-elif epi_model == 'SUIHTER':
-    isolated = eDataG['Isolated'].values
-    hospitalized = eDataG['Hospitalized'].values
-    threatened = eDataG['Threatened'].values
-    extinct = eDataG['Extinct'].values
-    recovered = eDataG['Recovered'].values
-    New_positives = eDataG['New_positives'].values
-    obs = np.concatenate([isolated,hospitalized,threatened, extinct, recovered,New_positives], axis=0).reshape((6,-1))
-nstep = int(eDataG['time'].max() / dt)
-t_vals = np.arange(0, nstep + 1) * dt
-
-mask = params.getMask()
-
-args = [model, Y0, *l_args, scenario]
-data=DataStructure()
-data.add_data_set(t_vals, obs, user_defined_object=args)
-
-
-xmod = np.arange(0, Tf, 1)
-
-pdata = DataStructure()
-pdata.add_data_set(x=xmod, y=data.ydata[0], user_defined_object=data.user_defined_object[0])
-
-param_mean = np.mean(chain, 0)
-params.params[params.getMask()] = param_mean[:-4]
-params.estimated=True
-params.save(MCMCpath + '/params_mean.csv')
-
-params.forecast(eDataG['time'].max(),Tf,1)
-if False:#params.nSites == 1:
-    R0 = np.zeros((chain.shape[0],params.nPhases))
-    for j,parms in enumerate(chain):
-        params.params[params.getMask()] = parms[:-4]
-        R0[j] = es.computeR0(params, epi_model, DO)
-    R0_np = np.zeros((params.nPhases,3))
-    R0_np[:,0]=range(params.nPhases)
-    R0_np[:,1]=R0.mean(axis=0)
-    R0_np[:,2]=R0.std(ddof=0,axis=0)
-    R0_df = pd.DataFrame(R0_np,columns=["Phases","Mean","Std"])
-    R0_df.to_csv(ResPath+'/R0mean.csv',index=None)
-    model_mean = model_fun(param_mean, pdata)
-#np.savetxt(ResultsFilePath+f'/model_mean_scen{j}',model_mean)
-    l_args = (params, Pop, DO, map_to_prov)
-    Rt = es.computeRt_const(l_args,[pdata.xdata[0][0],pdata.xdata[0][-1]],1,model_mean[:,0],R0.mean(axis=0))
-
-    np.savetxt(MCMCpath+'/Rt.csv',Rt)
-
-# Clculate intervals
-interval = calculate_intervals(chain, ResultsDict, pdata, model_fun,
-                                nsample=nsample, waitbar=True)
-if Ns > 1:
-    for i,inter in enumerate(interval):
-        interval[i]['credible'] = inter['credible'].reshape(inter['credible'].shape[0],Ns,-1).sum(axis=1)
-    eDataG = eDataG.groupby('data').sum()
-    isolated = eDataG['Isolated'].values
-    hospitalized = eDataG['Hospitalized'].values
-    threatened = eDataG['Threatened'].values
-    extinct = eDataG['Extinct'].values
-    recovered = eDataG['Recovered'].values
-    New_positives = eDataG['New_positives'].values
-    obs = np.concatenate([isolated,hospitalized,threatened, extinct, recovered,New_positives], axis=0).reshape((6,-1))
-    data.ydata[0] = obs
-
-
-
-day_0 = pd.to_datetime(DPC_ndays)
-case = interval[-2]['credible']
-hospitalizations = interval[2]['credible'] * params.params_time[-1,3]
-    death = np.diff(np.hstack([extinct[-2]*np.ones((interval[5]['credible'].shape[0],1)),interval[5]['credible']]),axis=1)
-    dates = pd.date_range(day_0,day_0+pd.Timedelta(case.shape[1]-1,'days'))
+    args = (forecast, variant, variant_prevalence)
+    data=DataStructure()
+    data.add_data_set(t_list, Y0, user_defined_object=args)
     
-    case = pd.DataFrame(case.transpose(),index=dates)
-    hosp = pd.DataFrame(hospitalizations.transpose(),index=dates)
-    death= pd.DataFrame(death.transpose(),index=dates)
+    # Calculate intervals
+    interval = calculate_intervals(chain, ResultsDict, data, model_solver.model_MCMC, nsample=nsample, waitbar=True)
+    t_list = model_solver.t_list.copy()
 
-    df = pd.DataFrame(columns = ["forecast_date","scenario_id","target","target_end_date","location","type","quantile","value"])
-    location = 'IT'
-    for i in range(4):
-        for c in ['case','hosp','death']:
-            target = f'{i+1} wk ahead inc {c}' 
-            target_end = day_0+pd.Timedelta(6+7*i,'days')
-            temp = pd.DataFrame(columns = ["forecast_date","scenario_id","target","target_end_date","location","type","quantile","value"])
-            case_temp = locals()[c].loc[day_0+pd.Timedelta(7*i,'days'):target_end].sum(axis=0)
-            case_quantiles = generate_quantiles(case_temp,np.concatenate([[0.5, 0.01, 0.025],np.arange(5,100,5)/100,[0.975,0.99]])) 
-            quantiles = np.concatenate([['NA', 0.01, 0.025],np.arange(5,100,5)/100,[0.975,0.99]])
+    compartments =  [
+            'Individui in isolamento domiciliare',
+            'Ricoverati (non in terapia intensiva)',
+            'Ricoverati in terapia intensiva',
+            'Deceduti',
+            'Recovered',
+            'Guariti',
+            'Nuovi positivi',
+            'Nuovi ingressi in terapia intensiva',
+            'Deceduti giornalieri',
+            'Positivi',
+            'Totale ospedalizzati',
+            'Tasso di letalità',
+            'Nuovi positivi su 7 giorni',
+            'Percentuale di ospedalizzati',
+      #      'Percentuale occupazione terapie intensive',
+            'R*'
+    ]
+    n_compartments = len(compartments)
+    compartments += [c+' q=0.025' for c in compartments] + [c+' q=0.975' for c in compartments] 
+    results_df = pd.DataFrame(index = pd.date_range(day_init+pd.Timedelta(t_list[0], 'days'), day_init+pd.Timedelta(t_list[-1], 'days')), columns = compartments)
+    intervals_dict = dict(zip(['S', 'U', 'I', 'H', 'T', 'E', 'R', 'V1', 'V2', 'V2p', 'R_d', 'N_p', 'N_t'],[inter['credible'] for inter in interval]))
+    
+    wanted_compartments = ['I', 'H', 'T', 'E', 'R', 'R_d', 'N_p', 'N_t']
+    n_wanted_compartments = len(wanted_compartments)
+    results = np.zeros((model_solver.t_list.size, n_wanted_compartments, 3)) 
+    for i,comp in enumerate(wanted_compartments):
+        quantiles = generate_quantiles(intervals_dict[comp], np.array([0.025, 0.5, 0.975]))
+        results[:,i,:] = quantiles.T
+    results_df.iloc[:,:n_wanted_compartments] = results[...,1]
+    results_df.iloc[:,n_compartments:n_compartments+n_wanted_compartments] = results[...,0]
+    results_df.iloc[:,2*n_compartments:2*n_compartments+n_wanted_compartments] = results[...,2]
 
-            temp['value'] = list(map(int,np.round(case_quantiles)))
-            temp['target'] = target
-            temp['target_end_date'] = target_end.strftime('%Y-%m-%d')
-            temp['quantile'] = quantiles
-            temp['type'] = 'quantile'
-            temp['type'].iloc[0] = 'point'
+    deceduti_giornalieri = generate_quantiles(np.diff(intervals_dict['E'], axis=1, prepend=model_solver.data.Extinct.iloc[-2]), np.array([0.025, 0.5, 0.975]))
+    results_df['Deceduti giornalieri'] = deceduti_giornalieri[1] 
+    results_df['Deceduti giornalieri q=0.025'] = deceduti_giornalieri[0] 
+    results_df['Deceduti giornalieri q=0.975'] = deceduti_giornalieri[2] 
 
-            df = df.append(temp,ignore_index=True)
-    df['forecast_date'] = day_end.strftime('%Y-%m-%d')
-    df['location'] = location
-    df['scenario_id'] = 'forecast'
-    df.to_csv('forecast_hub/'+day_end.strftime('%Y-%m-%d')+'-epiMOX-SUIHTER.csv',index=None)
+    positivi = generate_quantiles(intervals_dict['I']+intervals_dict['H']+intervals_dict['T'], np.array([0.025, 0.5, 0.975]))
+    results_df['Positivi'] = positivi[1] 
+    results_df['Positivi q=0.025'] = positivi[0] 
+    results_df['Positivi q=0.975'] = positivi[2] 
 
-    return data,pdata,interval,peaks
+    totale_ospedalizzati = generate_quantiles(intervals_dict['H']+intervals_dict['T'], np.array([0.025, 0.5, 0.975]))
+    results_df['Totale ospedalizzati'] = totale_ospedalizzati[1] 
+    results_df['Totale ospedalizzati q=0.025'] = totale_ospedalizzati[0] 
+    results_df['Totale ospedalizzati q=0.975'] = totale_ospedalizzati[2] 
+
+    tasso_letale = generate_quantiles(intervals_dict['E']/(intervals_dict['E']+intervals_dict['R_d']), np.array([0.025, 0.5, 0.975]))
+    results_df['Tasso di letalità'] = tasso_letale[1] 
+    results_df['Tasso di letalità q=0.025'] = tasso_letale[0] 
+    results_df['Tasso di letalità q=0.975'] = tasso_letale[2] 
+
+    nuovi_positivi_settimana = generate_quantiles(pd.DataFrame(intervals_dict['N_p']).rolling(window=7).sum(), np.array([0.025, 0.5, 0.975]))
+    results_df['Nuovi positivi su 7 giorni'] = nuovi_positivi_settimana[1] 
+    results_df['Nuovi positivi su 7 giorni q=0.025'] = nuovi_positivi_settimana[0] 
+    results_df['Nuovi positivi su 7 giorni q=0.975'] = nuovi_positivi_settimana[2] 
+
+    percentuale_ospedalizzati = generate_quantiles((intervals_dict['H']+intervals_dict['T'])/(intervals_dict['I']+intervals_dict['H']+intervals_dict['T'])*100, np.array([0.025, 0.5, 0.975]))
+    results_df['Percentuale di ospedalizzati'] = percentuale_ospedalizzati[1] 
+    results_df['Percentuale di ospedalizzati q=0.025'] = percentuale_ospedalizzati[0] 
+    results_df['Percentuale di ospedalizzati q=0.975'] = percentuale_ospedalizzati[2] 
+
+    logI = pd.DataFrame(np.log(intervals_dict['I']+intervals_dict['H']+intervals_dict['T']))
+    r_star = generate_quantiles((logI.diff(periods=7)/7*9+1).to_numpy(), np.array([0.025, 0.5, 0.975]))
+    results_df['R*'] = r_star[1] 
+    results_df['R* q=0.025'] = r_star[0] 
+    results_df['R* q=0.975'] = r_star[2] 
+
+    results_df.index = results_df.index.strftime('%Y-%m-%d')
+    results_df.rename_axis('Date', inplace=True)
+    results_df.reset_index(inplace=True)
+    results_df.to_json(MCMCpath+'simdf_MCMC.json')
+
+    return data, interval
 	
 
 if __name__ == '__main__':
@@ -194,5 +156,10 @@ if __name__ == '__main__':
         burnin = int(sys.argv[3])
     else:
         burnin = None
+
+    if len(sys.argv) > 4:
+        forecast = int(sys.argv[4])
+    else:
+        forecast = True
     
-    data,pdata,interval,peaks = MCMC_postprocess(ResultsFilePath, nsample, burnin,scenario = None)
+    data,interval = MCMC_postprocess(ResultsFilePath, nsample, burnin, forecast, scenario = None)

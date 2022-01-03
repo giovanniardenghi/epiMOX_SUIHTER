@@ -39,8 +39,7 @@ def MCMC_postprocess(ResPath, nsample=500, burnin=None, forecast=True, scenario=
     t_list = model_solver.t_list.copy()
     Y0 = model_solver.Y0.copy()
 
-    day_init = pd.to_datetime(DPC_start)
-    day_end = pd.to_datetime(DPC_ndays)
+    day_end = pd.to_datetime(DPC_ndays) + pd.Timedelta(1, 'day')
 
     mask = model_solver.params.getMask()
 
@@ -115,7 +114,7 @@ if __name__ == '__main__':
         burnin = None
 
     if len(sys.argv) > 4:
-        forecast = int(sys.argv[4])
+        forecast = bool(int(sys.argv[4]))
     else:
         forecast = True
     

@@ -347,7 +347,7 @@ class SUIHTER:
             if variant:
                 self.initialize_variant(variant, variant_prevalence)
             T0 = int(self.data.time.iloc[-1])
-            self.t_list = self.t_list[T0:]
+            self.t_list = np.arange(T0, self.t_list[-1]+1) 
             self.Y0 = self.Y[...,T0].copy()
             self.Y0[2] = self.Y0[1] * variant_prevalence
             self.Y0[1] *= 1 - variant_prevalence
@@ -454,10 +454,11 @@ class SUIHTER:
         Y0 = data.ydata[0].squeeze()
 
         self.Y0 = Y0.copy()
+        self.Y0[0] += self.Y0[1] + self.Y0[7]
         self.Y0[1] *= params[-2]
         self.Y0[7] *= params[-1]
-        self.Y0[0] = self.Pop - self.Y0[1:].sum()
-        
+        self.Y0[0] -= self.Y0[1] + self.Y0[7]
+
         return self.error(params[:-4])
 
 
