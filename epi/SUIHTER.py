@@ -80,6 +80,19 @@ class SUIHTER:
         self.sigma2pv = 1 - self.kappa2p + self.kappa2p * self.sigma2p
         return
 
+    def wipe_variant(self):
+        self.variant_prevalence = 0
+        self.variant_prevalence_hosp = 0
+        self.variant_factor = 0
+        self.kappa1 = 0
+        self.kappa2 = 0
+        self.kappa2p = 0
+        self.xi = 0
+        self.sigma1v = 0
+        self.sigma2v = 0
+        self.sigma2pv = 0
+        return
+
     def model(self, t, y0):
         t_int  = int(np.floor(t))
         beta_U,beta_I,delta,omega_I,omega_H,rho_U,\
@@ -325,6 +338,7 @@ class SUIHTER:
     def model_MCMC(self, params, data):
         t_list = data.xdata[0].squeeze()
         self.t_list = t_list.copy()
+        self.wipe_variant()
         self.params.params[self.params.getMask()] = params[:-4]
         self.params.forecast(self.params.dataEnd,self.t_list[-1],0,None)
         self.params.params_time[self.t_list[0]:self.t_list[-1]+1,3] = self.params.omegaI_vec[self.t_list[0]:self.t_list[-1]+1]*(1+params[-4])
