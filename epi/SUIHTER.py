@@ -139,7 +139,7 @@ class SUIHTER:
         dV1 = self.dV1vec[t_int]
         dV2 = self.dV2vec[t_int]
         dV3 = self.dV3vec[t_int]
-        
+
         dV1S = dV1 * self.Sfrac[t_int]
         dV2S = dV2 * self.Sfrac[t_int]
         dV2pS =self.dV2vec[t_int-150] *  self.Sfrac[t_int-150] if t>=150 else 0
