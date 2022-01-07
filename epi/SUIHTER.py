@@ -96,6 +96,10 @@ class SUIHTER:
         dV3 = self.dV3vec[t_int]
         #if t_int >= 298:
         #    dV3 *= 2
+        #if t_int >= 333:
+        #    dV1 = 200000
+        #if t_int >= 353:
+        #    dV2 = 200000
 
         #t_vac = t_int -1 if t>=1 else t_int
         #print(self.Y[0,t_vac],self.Y[-4,t_vac],self.R_d[t_int])
