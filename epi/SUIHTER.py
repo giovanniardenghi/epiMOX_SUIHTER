@@ -16,7 +16,7 @@ class SUIHTER:
         #        self.R, self.V1, self.V2, self.V2p = Y0
         self.Y0 = Y0
         # Y: Nc x T x Ns
-        self.Y = np.zeros((len(Y0), t_list[-1]+1))
+        self.Y = np.zeros((len(Y0), t_list[-1]+1, Pop.size)).squeeze()
         #initialize parameters
         self.params = params
         self.Ns = Pop.size
@@ -78,6 +78,19 @@ class SUIHTER:
         self.sigma1v = 1 - self.kappa1 + self.kappa1 * self.sigma1
         self.sigma2v = 1 - self.kappa2 + self.kappa2 * self.sigma2
         self.sigma2pv = 1 - self.kappa2p + self.kappa2p * self.sigma2p
+        return
+
+    def wipe_variant(self):
+        self.variant_prevalence = 0
+        self.variant_prevalence_hosp = 0
+        self.variant_factor = 0
+        self.kappa1 = 0
+        self.kappa2 = 0
+        self.kappa2p = 0
+        self.xi = 0
+        self.sigma1v = 0
+        self.sigma2v = 0
+        self.sigma2pv = 0
         return
 
     def model(self, t, y0):
@@ -329,6 +342,7 @@ class SUIHTER:
     def model_MCMC(self, params, data):
         t_list = data.xdata[0].squeeze()
         self.t_list = t_list.copy()
+        self.wipe_variant()
         self.params.params[self.params.getMask()] = params[:-4]
         self.params.forecast(self.params.dataEnd,self.t_list[-1],0,None)
         self.params.params_time[self.t_list[0]:self.t_list[-1]+1,3] = self.params.omegaI_vec[self.t_list[0]:self.t_list[-1]+1]*(1+params[-4])
@@ -351,7 +365,7 @@ class SUIHTER:
             if variant:
                 self.initialize_variant(variant, variant_prevalence)
             T0 = int(self.data.time.iloc[-1])
-            self.t_list = self.t_list[T0:]
+            self.t_list = np.arange(T0, self.t_list[-1]+1) 
             self.Y0 = self.Y[...,T0].copy()
             self.Y0[2] = self.Y0[1] * variant_prevalence
             self.Y0[1] *= 1 - variant_prevalence
@@ -458,10 +472,11 @@ class SUIHTER:
         Y0 = data.ydata[0].squeeze()
 
         self.Y0 = Y0.copy()
+        self.Y0[0] += self.Y0[1] + self.Y0[7]
         self.Y0[1] *= params[-2]
         self.Y0[7] *= params[-1]
-        self.Y0[0] = self.Pop - self.Y0[1:].sum()
-        
+        self.Y0[0] -= self.Y0[1] + self.Y0[7]
+
         return self.error(params[:-4])
 
 
