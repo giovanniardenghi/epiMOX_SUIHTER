@@ -21,8 +21,7 @@ def MCMC_postprocess(ResPath, nsample=500, burnin=None, forecast=True, scenario=
         sys.exit('Error - Input data file ' + InputFileName + ' not found. Exit.')
     MCMCpath = ResPath + '/MCMC/'	
     if os.path.exists(ResPath):
-        ResultsDict = chproc.load_serial_simulation_results(MCMCpath, extension='txt')
-        ResultsDict['theta'] = np.array(ResultsDict['theta'])
+        ResultsDict = chproc.load_serial_simulation_results(MCMCpath, json_file='results_dict.json', extension='txt')
         chain = ResultsDict['chain']
         s2chain = ResultsDict['s2chain']
     else:
@@ -53,7 +52,7 @@ def MCMC_postprocess(ResPath, nsample=500, burnin=None, forecast=True, scenario=
         variant = variants[DataDic['variant']]
     else:
         variant = None
-        variant_prevalence = 0
+        variant_prevalence=0
 
     args = (forecast, variant, variant_prevalence)
     data=DataStructure()
@@ -82,60 +81,39 @@ def MCMC_postprocess(ResPath, nsample=500, burnin=None, forecast=True, scenario=
             'R*'
     ]
     n_compartments = len(compartments)
-    compartments += [c+' q=0.025' for c in compartments] + [c+' q=0.975' for c in compartments] 
+    quantiles = np.array([0.025, 0.5, 0.975])
     results_df = pd.DataFrame(index = pd.date_range(day_init+pd.Timedelta(t_list[0], 'days'), day_init+pd.Timedelta(t_list[-1], 'days')), columns = compartments)
+    
     intervals_dict = dict(zip(['S', 'U', 'I', 'H', 'T', 'E', 'R', 'V1', 'V2', 'V2p', 'R_d', 'N_p', 'N_t'],[inter['credible'] for inter in interval]))
     
     wanted_compartments = ['I', 'H', 'T', 'E', 'R', 'R_d', 'N_p', 'N_t']
     n_wanted_compartments = len(wanted_compartments)
-    results = np.zeros((model_solver.t_list.size, n_wanted_compartments, 3)) 
+    results = np.zeros((model_solver.t_list.size, n_wanted_compartments, quantiles.size)) 
     for i,comp in enumerate(wanted_compartments):
-        quantiles = generate_quantiles(intervals_dict[comp], np.array([0.025, 0.5, 0.975]))
-        results[:,i,:] = quantiles.T
-    results_df.iloc[:,:n_wanted_compartments] = results[...,1]
-    results_df.iloc[:,n_compartments:n_compartments+n_wanted_compartments] = results[...,0]
-    results_df.iloc[:,2*n_compartments:2*n_compartments+n_wanted_compartments] = results[...,2]
+        model_quantiles = generate_quantiles(intervals_dict[comp], quantiles)
+        results[:,i,:] = model_quantiles.T
 
-    deceduti_giornalieri = generate_quantiles(np.diff(intervals_dict['E'], axis=1, prepend=model_solver.data.Extinct.iloc[-2]), np.array([0.025, 0.5, 0.975]))
-    results_df['Deceduti giornalieri'] = deceduti_giornalieri[1] 
-    results_df['Deceduti giornalieri q=0.025'] = deceduti_giornalieri[0] 
-    results_df['Deceduti giornalieri q=0.975'] = deceduti_giornalieri[2] 
-
-    positivi = generate_quantiles(intervals_dict['I']+intervals_dict['H']+intervals_dict['T'], np.array([0.025, 0.5, 0.975]))
-    results_df['Positivi'] = positivi[1] 
-    results_df['Positivi q=0.025'] = positivi[0] 
-    results_df['Positivi q=0.975'] = positivi[2] 
-
-    totale_ospedalizzati = generate_quantiles(intervals_dict['H']+intervals_dict['T'], np.array([0.025, 0.5, 0.975]))
-    results_df['Totale ospedalizzati'] = totale_ospedalizzati[1] 
-    results_df['Totale ospedalizzati q=0.025'] = totale_ospedalizzati[0] 
-    results_df['Totale ospedalizzati q=0.975'] = totale_ospedalizzati[2] 
-
-    tasso_letale = generate_quantiles(intervals_dict['E']/(intervals_dict['E']+intervals_dict['R_d']), np.array([0.025, 0.5, 0.975]))
-    results_df['Tasso di letalità'] = tasso_letale[1] 
-    results_df['Tasso di letalità q=0.025'] = tasso_letale[0] 
-    results_df['Tasso di letalità q=0.975'] = tasso_letale[2] 
-
-    nuovi_positivi_settimana = generate_quantiles(pd.DataFrame(intervals_dict['N_p']).rolling(window=7).sum(), np.array([0.025, 0.5, 0.975]))
-    results_df['Nuovi positivi su 7 giorni'] = nuovi_positivi_settimana[1] 
-    results_df['Nuovi positivi su 7 giorni q=0.025'] = nuovi_positivi_settimana[0] 
-    results_df['Nuovi positivi su 7 giorni q=0.975'] = nuovi_positivi_settimana[2] 
-
-    percentuale_ospedalizzati = generate_quantiles((intervals_dict['H']+intervals_dict['T'])/(intervals_dict['I']+intervals_dict['H']+intervals_dict['T'])*100, np.array([0.025, 0.5, 0.975]))
-    results_df['Percentuale di ospedalizzati'] = percentuale_ospedalizzati[1] 
-    results_df['Percentuale di ospedalizzati q=0.025'] = percentuale_ospedalizzati[0] 
-    results_df['Percentuale di ospedalizzati q=0.975'] = percentuale_ospedalizzati[2] 
-
-    logI = pd.DataFrame(np.log(intervals_dict['I']+intervals_dict['H']+intervals_dict['T']))
-    r_star = generate_quantiles((logI.diff(periods=7)/7*9+1).to_numpy(), np.array([0.025, 0.5, 0.975]))
-    results_df['R*'] = r_star[1] 
-    results_df['R* q=0.025'] = r_star[0] 
-    results_df['R* q=0.975'] = r_star[2] 
+    deceduti_giornalieri = generate_quantiles(np.diff(intervals_dict['E'], axis=1, prepend=model_solver.data.Extinct.iloc[-2]), quantiles)
+    positivi = generate_quantiles(intervals_dict['I']+intervals_dict['H']+intervals_dict['T'], quantiles)
+    totale_ospedalizzati = generate_quantiles(intervals_dict['H']+intervals_dict['T'], quantiles)
+    tasso_letale = generate_quantiles(intervals_dict['E']/(intervals_dict['E']+intervals_dict['R_d']), quantiles)
+    nuovi_positivi_settimana = generate_quantiles(pd.DataFrame(intervals_dict['N_p']).rolling(window=7).sum(), quantiles)
+    percentuale_ospedalizzati = generate_quantiles((intervals_dict['H']+intervals_dict['T'])/(intervals_dict['I']+intervals_dict['H']+intervals_dict['T'])*100, quantiles)
+    logI = pd.DataFrame(np.log(intervals_dict['I']+intervals_dict['H']+intervals_dict['T']).T)
+    r_star = generate_quantiles((logI.diff(periods=7)/7*9+1).to_numpy().T, quantiles)
 
     results_df.index = results_df.index.strftime('%Y-%m-%d')
     results_df.rename_axis('Date', inplace=True)
-    results_df.reset_index(inplace=True)
-    results_df.to_json(MCMCpath+'simdf_MCMC.json')
+    for i,x in enumerate(quantiles):
+        results_df.iloc[:,:n_wanted_compartments] = results[...,i]
+        results_df['Deceduti giornalieri'] = deceduti_giornalieri[i]
+        results_df['Positivi'] = positivi[i] 
+        results_df['Totale ospedalizzati'] = totale_ospedalizzati[i] 
+        results_df['Tasso di letalità'] = tasso_letale[i] 
+        results_df['Nuovi positivi su 7 giorni'] = nuovi_positivi_settimana[i] 
+        results_df['Percentuale di ospedalizzati'] = percentuale_ospedalizzati[i] 
+        results_df['R*'] = r_star[i] 
+        results_df.to_json(ResPath + f'simdf_MCMC{"_"+str(x).rsplit(".")[-1] if not x==0.5 else ""}.json', date_format='iso')
 
     return data, interval
 	

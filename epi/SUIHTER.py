@@ -33,6 +33,7 @@ class SUIHTER:
         self.DPC_start = DPC_start
         self.DPC_end = DPC_end
         self.scenario = scenario
+        self.scenarios_dict = {}
 
         self.data = data
 
@@ -93,6 +94,37 @@ class SUIHTER:
         self.sigma2pv = 0
         return
 
+    #def initialize_scenarios(self, scenarios):
+       # self.scenarios_dict = scenarios
+
+       # regions_colors = pd.read_csv('https://raw.githubusercontent.com/giovanniardenghi/dpc-covid-data/main/SUIHTER/coloreRegioni.csv')
+       # regions_colors['Data'] = pd.to_datetime(regions_colors.Data)
+       # regions_colors.set_index('Data', inplace=True)
+       # regions_colors.index += pd.Timedelta(self.adapNPI, 'days')
+       # #same = regions_colors.loc[self.DPC_end + pd.Timedelta(1,'day'):].empty
+       # regions_colors = regions_colors.reindex(index=pd.date_range(regions_colors.index[0], self.DPC_start + pd.Timedelta(self.t_list[-1], 'days'))).ffill()
+
+       # Pop = pd.read_csv('util/Regioni_Italia_sites.csv')
+       # Pop = Pop[1:].set_index('Name').Pop
+       # 
+       # current = dict.fromkeys(scenarios['White'].keys())
+       # forecast = [dict.fromkeys(self.t_list, k) for k in scenarios['White'].keys()]
+
+       # last_phase = pd.date_range(self.params.dataStart + pd.Timedelta(self.params.times[-1] + 1), self.params.dataEnd)
+       # forecast_phase = pd.date_range(self.DPC_end + pd.Timedelta(1, 'day'),  self.DPC_start + pd.Timedelta(self.t_list[-1], 'days'))
+
+       # for vax in scenarios['White'].keys():
+       #     regions_tmp = regions_colors.loc[last_phase].replace({x:y[vax] for x,y in scenarios.items()}).mul(Pop,axis=1)
+       #     current[vax] = (regions_tmp.mean().sum()/Pop.sum()).round(4)
+
+       # self.scenarios_dict['Current'] = current 
+
+       # for idx, vax in enumerate(scenarios['White'].keys()):
+       #     regions_tmp = regions_colors.loc[forecast_phase].replace({x:y[vax] for x,y in scenarios.items()}).mul(Pop,axis=1)
+       #     forecast[vax] = (regions_tmp.mean().sum()/Pop.sum()).round(4)
+
+       # self.scenarios_dict['Forecast'] = forecast
+
     def model(self, t, y0):
         t_int  = int(np.floor(t))
         beta_U,beta_I,delta,omega_I,omega_H,rho_U,\
@@ -107,25 +139,15 @@ class SUIHTER:
         dV1 = self.dV1vec[t_int]
         dV2 = self.dV2vec[t_int]
         dV3 = self.dV3vec[t_int]
-        #if t_int >= 298:
-        #    dV3 *= 2
-
-        #t_vac = t_int -1 if t>=1 else t_int
-        #print(self.Y[0,t_vac],self.Y[-4,t_vac],self.R_d[t_int])
-        #dV1S = dV1 * self.Y[0,t_vac] / (self.Y[0,t_vac] + self.Y[-4,t_vac] - self.R_d[t_int])
-        #dV2S = dV2 * self.Y[0,t_vac] / (self.Y[0,t_vac] + self.Y[-4,t_vac] - self.R_d[t_int])
-        #dV2pS =self.dV2vec[t_vac-150] *  self.Y[0,t_vac-150]/ (self.Y[0,t_vac-150] + self.Y[-4,t_vac-150] - self.R_d[t_int-150]) if t>150 else 0
-        #dV3S = dV3 * self.Y[0,t_vac] / (self.Y[0,t_vac] + self.Y[-4,t_vac] - self.R_d[t_int])
+        
         dV1S = dV1 * self.Sfrac[t_int]
         dV2S = dV2 * self.Sfrac[t_int]
         dV2pS =self.dV2vec[t_int-150] *  self.Sfrac[t_int-150] if t>=150 else 0
         dV3S = dV3 * self.Sfrac[t_int] 
-        #if self.forecast:
-        #    dV3S *= 2
 
         current_variant_prevalence = self.variant_prevalence
 
-        if self.forecast:# or t_int >= 298:
+        if self.forecast:
             totV1 = self.dV1vec[:t_int+1].sum()
             totV2 = self.dV2vec[:t_int+1].sum()
             totV1ini = self.dV1vec[:int(self.params.dataEnd)+1].sum()
@@ -176,12 +198,7 @@ class SUIHTER:
             beta_novax_r =  0.0079
 
             vax = V1 + V2 + V2p
-            betaV_now = betaV_new = beta_gp
-            betaS_now = (beta_gp * (S - S_no_gp) + beta_novax * S_no_gp) / S
             betaS_new = (beta_test * S_gp + beta_gp * S_non_vaccinabili + beta_novax * S_no_gp) / S
-            betaS_now_y = (beta_gp * (S - S_no_gp) + beta_novax_y * S_no_gp) / S
-            betaS_now_a = (beta_gp * (S - S_no_gp) + beta_novax_a * S_no_gp) / S
-            betaS_now_r = (beta_gp_r * (S - S_no_gp) + beta_novax_r * S_no_gp) / S
             betaS_new_y = (beta_test_y * S_gp + beta_gp * S_non_vaccinabili + beta_novax_y * S_no_gp) / S
             betaS_new_a = (beta_test_a * S_gp + beta_gp * S_non_vaccinabili + beta_novax_a * S_no_gp) / S
             betaS_new_r = (beta_test_r * S_gp + beta_gp_r * S_non_vaccinabili + beta_novax_r * S_no_gp) / S
@@ -234,8 +251,8 @@ class SUIHTER:
                         tauratioS = betaS_new_a / betaS_new
                         tauratio  = beta_gp_a / betaV_new
                     else:
-                        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_y / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*betaS_new_y / betaS_new
-                        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_y / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*beta_gp_y / betaV_new
+                        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_a / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*1
+                        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_a / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*1
             # Screnario rosso
             elif self.scenario=='Red':
                 if t - self.t_list[0] > 3:
@@ -274,8 +291,8 @@ class SUIHTER:
                         tauratioS = betaS_new_a / betaS_new
                         tauratio  = beta_gp_a / betaV_new
                     else:
-                        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_y / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*betaS_new_y / betaS_new
-                        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_y / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*beta_gp_y / betaV_new
+                        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_a / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*betaS_new_y / betaS_new
+                        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_a / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*beta_gp_y / betaV_new
                 elif (delta * U > 150/1e5/7*self.Pop) or ((delta * U > 50/1e5/7*self.Pop) and (H > 0.15*maxH) and (T > 0.1*maxT)):
                     if self.inYellow == False:
                         self.inRed = False
@@ -303,9 +320,9 @@ class SUIHTER:
         UbtoR = rho_U * Ub
         UvtoR = rho_U * Uv
         omega_I_factor = ((casesS + self.h1 * casesV1 + self.h2 * casesV2)/(casesSini + self.h1 * casesV1ini + self.h2 * casesV2ini) *
-                         (1 - self.xi * current_variant_prevalence)/(1-self.xi*self.variant_prevalence_hosp) if (self.forecast) else 1)
-        omega_H_factor = ((casesS + self.t1 * casesV1 + self.t2 * casesV2)/(casesSini + self.t1 * casesV1ini + self.t2 * casesV2ini) if (self.forecast) else 1)
-        gamma_I_factor = ((casesS + self.m1 * casesV1 + self.m2 * casesV2)/(casesSini + self.m1 * casesV1ini + self.m2 * casesV2ini) if (self.forecast) else 1)
+                         (1 - self.xi * current_variant_prevalence)/(1-self.xi*self.variant_prevalence_hosp)) if self.forecast else 1
+        omega_H_factor = ((casesS + self.t1 * casesV1 + self.t2 * casesV2)/(casesSini + self.t1 * casesV1ini + self.t2 * casesV2ini)) if self.forecast else 1
+        gamma_I_factor = ((casesS + self.m1 * casesV1 + self.m2 * casesV2)/(casesSini + self.m1 * casesV1ini + self.m2 * casesV2ini)) if self.forecast else 1
         ItoH = omega_I * I + omega_I * I * (omega_I_factor - 1)
         ItoR = rho_I * I - omega_I * I * (omega_I_factor - 1) - gamma_I * I * (gamma_I_factor - 1)
         ItoE = gamma_I * I + gamma_I * I * (gamma_I_factor - 1)
@@ -347,9 +364,10 @@ class SUIHTER:
         Y0 = data.ydata[0].squeeze()
 
         self.Y0 = Y0.copy()
+        self.Y0[0] += self.Y0[1] + self.Y0[7]
         self.Y0[1] *= params[-2]
         self.Y0[7] *= params[-1]
-        self.Y0[0] = self.Pop - self.Y0[1:].sum()
+        self.Y0[0] -= self.Y0[1] + self.Y0[7]
         
         self.solve()
         
@@ -389,8 +407,8 @@ class SUIHTER:
         t_start = int(self.t_list[0])
         self.params.compute_param_over_time(int(self.t_list[-1]))
         self.Y[:,t_start] = self.Y0 
-        if not self.forecast and t_start==0:
-            self.R_d[t_start] = self.data.Recovered.iloc[t_start]
+        if self.forecast or t_start==0:
+            self.R_d[t_start] = self.data.Recovered.loc[t_start]
             self.Sfrac[t_start] = self.Y0[0] / (self.Y0[0] + self.Y0[-4] - self.R_d[t_start])
         for i,t in enumerate(self.t_list[:-1]):
             y0 = self.Y[...,i+t_start]

@@ -50,6 +50,7 @@ def MCMC_postprocess(ResPath, nsample=500, burnin=None, forecast=True, scenario=
         variant = variants[DataDic['variant']]
     else:
         variant = None
+        variant_prevalence = 0
 
     args = (forecast, variant, variant_prevalence)
     data=DataStructure()

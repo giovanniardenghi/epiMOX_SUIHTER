@@ -1,0 +1,22 @@
+{
+	"White": {
+		"beta_gp": 0.0404,
+		"beta_test": 0.0326,
+		"beta_novax": 0.0197
+	},
+	"Yellow": {
+		"beta_gp": 0.036,
+		"beta_test": 0.029,
+		"beta_novax": 0.017
+	},
+	"Orange": {
+		"beta_gp": 0.032,
+		"beta_test": 0.026,
+		"beta_novax": 0.015
+	},
+	"Red": {
+		"beta_gp": 0.0159,
+		"beta_test": 0.0149,
+		"beta_novax": 0.0079
+	}
+}
