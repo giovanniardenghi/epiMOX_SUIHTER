@@ -140,6 +140,13 @@ class SUIHTER:
         dV2 = self.dV2vec[t_int]
         dV3 = self.dV3vec[t_int]
 
+        #if t_int >= 298:
+        #    dV3 *= 2
+        #if t_int >= 333:
+        #    dV1 = 200000
+        #if t_int >= 353:
+        #    dV2 = 200000
+
         dV1S = dV1 * self.Sfrac[t_int]
         dV2S = dV2 * self.Sfrac[t_int]
         dV2pS =self.dV2vec[t_int-150] *  self.Sfrac[t_int-150] if t>=150 else 0
@@ -198,6 +205,7 @@ class SUIHTER:
             beta_novax_r =  0.0079
 
             vax = V1 + V2 + V2p
+            betaV_new = beta_gp
             betaS_new = (beta_test * S_gp + beta_gp * S_non_vaccinabili + beta_novax * S_no_gp) / S
             betaS_new_y = (beta_test_y * S_gp + beta_gp * S_non_vaccinabili + beta_novax_y * S_no_gp) / S
             betaS_new_a = (beta_test_a * S_gp + beta_gp * S_non_vaccinabili + beta_novax_a * S_no_gp) / S
