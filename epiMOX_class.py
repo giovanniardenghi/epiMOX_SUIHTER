@@ -188,6 +188,7 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
     vaccines.index = pd.to_datetime(vaccines.index)
     vaccines = vaccines.reindex(pd.date_range(vaccines.index[0],pd.to_datetime(Tf_data)),columns=['prima_dose', 'seconda_dose', 'terza_dose']).ffill()
     maxV = 54009901
+    #maxV = pd.read_csv('https://raw.githubusercontent.com/italia/covid19-opendata-vaccini/master/dati/platea.csv').totale_popolazione.sum()
 
     gp_from_test = pd.read_csv('https://raw.githubusercontent.com/giovanniardenghi/dpc-covid-data/main/data/gp_from_test.csv')
     gp_from_test = gp_from_test[gp_from_test['data']>=DPC_start] 
@@ -309,7 +310,7 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
     print('...done!')
     
     # Forecast from data
-    if only_forecast:
+    if only_forecast and __name__=='__main__':
         vaccines['prima_dose'].iloc[0]+=vaccines_init['prima_dose']
         vaccines['seconda_dose'].iloc[0]+=vaccines_init['seconda_dose']
         vaccines['terza_dose'].iloc[0]+=vaccines_init['terza_dose']
@@ -342,6 +343,9 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
         model_solver.Y0 = Y0
         model_solver.t_list = time_list
         model_solver.forecast = True
+        with open('util/scenarios.json','r') as scen_file:
+            scenarios = json.load(scen_file) 
+        model_solver.initialize_scenarios(scenarios)
         model_solver.solve()
     #model_solver.computeRt()
 

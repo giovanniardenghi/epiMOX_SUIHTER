@@ -94,36 +94,39 @@ class SUIHTER:
         self.sigma2pv = 0
         return
 
-    #def initialize_scenarios(self, scenarios):
-       # self.scenarios_dict = scenarios
+    def initialize_scenarios(self, scenarios):
+        self.scenarios_dict = scenarios
 
-       # regions_colors = pd.read_csv('https://raw.githubusercontent.com/giovanniardenghi/dpc-covid-data/main/SUIHTER/coloreRegioni.csv')
-       # regions_colors['Data'] = pd.to_datetime(regions_colors.Data)
-       # regions_colors.set_index('Data', inplace=True)
-       # regions_colors.index += pd.Timedelta(self.adapNPI, 'days')
-       # #same = regions_colors.loc[self.DPC_end + pd.Timedelta(1,'day'):].empty
-       # regions_colors = regions_colors.reindex(index=pd.date_range(regions_colors.index[0], self.DPC_start + pd.Timedelta(self.t_list[-1], 'days'))).ffill()
+        regions_colors = pd.read_csv('https://raw.githubusercontent.com/giovanniardenghi/dpc-covid-data/main/SUIHTER/coloreRegioni.csv')
+        regions_colors['Data'] = pd.to_datetime(regions_colors.Data)
+        regions_colors.set_index('Data', inplace=True)
+        regions_colors.index += pd.Timedelta(self.adapNPI, 'days')
+        
+        regions_colors = regions_colors.reindex(index=pd.date_range(regions_colors.index[0], self.DPC_start + pd.Timedelta(self.t_list[-1], 'days'))).ffill()
 
-       # Pop = pd.read_csv('util/Regioni_Italia_sites.csv')
-       # Pop = Pop[1:].set_index('Name').Pop
-       # 
-       # current = dict.fromkeys(scenarios['White'].keys())
-       # forecast = [dict.fromkeys(self.t_list, k) for k in scenarios['White'].keys()]
+        Pop = pd.read_csv('util/Regioni_Italia_sites.csv')
+        Pop = Pop[1:].set_index('Name').Pop
+        
+        current = dict.fromkeys(scenarios['White'].keys())
+        forecast = dict.fromkeys(self.t_list, dict.fromkeys(scenarios['White'].keys()))
 
-       # last_phase = pd.date_range(self.params.dataStart + pd.Timedelta(self.params.times[-1] + 1), self.params.dataEnd)
-       # forecast_phase = pd.date_range(self.DPC_end + pd.Timedelta(1, 'day'),  self.DPC_start + pd.Timedelta(self.t_list[-1], 'days'))
+        last_phase = pd.date_range(self.params.dataStart + pd.Timedelta(self.params.times[-1] + 1), self.params.dataEnd)
+        forecast_phase = pd.date_range(self.DPC_end + pd.Timedelta(1, 'day'),  self.DPC_start + pd.Timedelta(self.t_list[-1], 'days'))
 
-       # for vax in scenarios['White'].keys():
-       #     regions_tmp = regions_colors.loc[last_phase].replace({x:y[vax] for x,y in scenarios.items()}).mul(Pop,axis=1)
-       #     current[vax] = (regions_tmp.mean().sum()/Pop.sum()).round(4)
+        for vax in scenarios['White'].keys():
+            regions_tmp = regions_colors.loc[last_phase].replace({x:y[vax] for x,y in scenarios.items()}).mul(Pop,axis=1)
+            current[vax] = (regions_tmp.mean().sum()/Pop.sum()).round(4)
 
-       # self.scenarios_dict['Current'] = current 
+        self.scenarios_dict['Current'] = current 
 
-       # for idx, vax in enumerate(scenarios['White'].keys()):
-       #     regions_tmp = regions_colors.loc[forecast_phase].replace({x:y[vax] for x,y in scenarios.items()}).mul(Pop,axis=1)
-       #     forecast[vax] = (regions_tmp.mean().sum()/Pop.sum()).round(4)
+        for idx, vax in enumerate(scenarios['White'].keys()):
+            regions_tmp = regions_colors.loc[forecast_phase].replace({x:y[vax] for x,y in scenarios.items()}).mul(Pop,axis=1)
+            regions_tmp = (regions_tmp.sum(axis=1)/Pop.sum()).round(4)
+            for i_day,days in enumerate((regions_tmp.index-self.DPC_start).days):
+                forecast[days][vax] = regions_tmp.iloc[i_day]
 
-       # self.scenarios_dict['Forecast'] = forecast
+        self.scenarios_dict['Forecast'] = forecast
+        return
 
     def model(self, t, y0):
         t_int  = int(np.floor(t))
@@ -188,21 +191,22 @@ class SUIHTER:
             beta_gp =       0.0404
             beta_test =     0.0326
             beta_novax =    0.0197
-                                  
-            # gialla              
+
+            # gialla
             beta_gp_y =     0.036 #0.0404
             beta_test_y =   0.029 #0.0318
             beta_novax_y =  0.017 #0.0195
-                                  
-            # arancione           
+
+            # arancione
             beta_gp_a =     0.032#0.0399
             beta_test_a =   0.026#0.0296
             beta_novax_a =  0.015#0.0189
-                                  
-            # rossa               
+
+            # rossa
             beta_gp_r =     0.0159
             beta_test_r =   0.0149
             beta_novax_r =  0.0079
+
 
             vax = V1 + V2 + V2p
             betaV_new = beta_gp
@@ -362,8 +366,11 @@ class SUIHTER:
 
     def model_MCMC(self, params, data):
         t_list = data.xdata[0].squeeze()
+        self.forecast = False
         self.t_list = t_list.copy()
         self.wipe_variant()
+        self.inYellow = self.inOrange = self.inRed = False
+        self.timeNPI = 0
         self.params.params[self.params.getMask()] = params[:-4]
         self.params.forecast(self.params.dataEnd,self.t_list[-1],0,None)
         self.params.params_time[self.t_list[0]:self.t_list[-1]+1,3] = self.params.omegaI_vec[self.t_list[0]:self.t_list[-1]+1]*(1+params[-4])
@@ -372,11 +379,13 @@ class SUIHTER:
         Y0 = data.ydata[0].squeeze()
 
         self.Y0 = Y0.copy()
-        self.Y0[0] += self.Y0[1] + self.Y0[7]
+        Pop = self.Y0.sum()
+        #self.Y0[0] += self.Y0[1] + self.Y0[7]
         self.Y0[1] *= params[-2]
         self.Y0[7] *= params[-1]
-        self.Y0[0] -= self.Y0[1] + self.Y0[7]
-        
+        #self.Y0[0] -= self.Y0[1] + self.Y0[7]
+        self.Y0[0] = Pop - self.Y0[1:].sum()
+
         self.solve()
         
         self.forecast = data.user_defined_object[0][0]
@@ -406,10 +415,10 @@ class SUIHTER:
         results = np.delete(results, 2, 0)
         results[-3] = self.R_d[self.t_list].flatten()
         results[-2,0] = self.data[self.data['time'] == self.t_list[0]]['New_positives'].values
-        results[-2,1:] = (results[1,:-1] * self.params.params_time[self.t_list[0]+1:,2]).flatten()
+        results[-2,1:] = (results[1,:-1] * self.params.params_time[self.t_list[1:],2]).flatten()
         results[-1,0] = self.data[self.data['time'] == self.t_list[0]]['New_threatened'].values
-        results[-1,1:] = (results[3,:-1] * self.params.params_time[self.t_list[0]:-1,4]).flatten()
-        return results.transpose() 
+        results[-1,1:] = (results[3,:-1] * self.params.params_time[self.t_list[:-1],4]).flatten()
+        return results.transpose()
                 
     def solve(self):
         t_start = int(self.t_list[0])
@@ -417,11 +426,11 @@ class SUIHTER:
         self.Y[:,t_start] = self.Y0 
         if self.forecast or t_start==0:
             self.R_d[t_start] = self.data.Recovered.loc[t_start]
-            self.Sfrac[t_start] = self.Y0[0] / (self.Y0[0] + self.Y0[-4] - self.R_d[t_start])
+            self.Sfrac[t_start] = self.Y0[0] / (self.Y0[0] + self.Y0[7] - self.R_d[t_start])
         for i,t in enumerate(self.t_list[:-1]):
             y0 = self.Y[...,i+t_start]
             self.R_d[t_start + i + 1] = self.R_d[t_start + i] + (y0[-8:-6] * self.params.params_time[t_start + i + 1,6:8]).sum()
-            self.Sfrac[t_start + i + 1] = y0[0] / (y0[0] + y0[-4] - self.R_d[t_start+i])
+            self.Sfrac[t_start + i + 1] = y0[0] / (y0[0] + y0[7] - self.R_d[t_start+i])
             k1=self.model(t      , y0     )
             k2=self.model(t+0.5, y0+0.5*k1)
             k3=self.model(t+0.5, y0+0.5*k2)
@@ -488,16 +497,17 @@ class SUIHTER:
     def error_MCMC(self, params, data):
         t_list = data.xdata[0].squeeze()
         self.t_list = t_list.copy()
-        self.params.params_time[self.t_list[0]:self.t_list[-1]+1,3] = self.params.omegaI_vec[self.t_list[0]:self.t_list[-1]+1]*(1+params[-4])
-        self.params.params_time[self.t_list[0]:self.t_list[-1]+1,4] = self.params.omegaH_vec[self.t_list[0]:self.t_list[-1]+1]*(1+params[-3])
+        self.params.params_time[self.t_list,3] = self.params.omegaI_vec[self.t_list]*(1+params[-4])
+        self.params.params_time[self.t_list,4] = self.params.omegaH_vec[self.t_list]*(1+params[-3])
         
         Y0 = data.ydata[0].squeeze()
 
         self.Y0 = Y0.copy()
-        self.Y0[0] += self.Y0[1] + self.Y0[7]
+        Pop = self.Y0.sum()
+        #self.Y0[0] += self.Y0[1] + self.Y0[7]
         self.Y0[1] *= params[-2]
         self.Y0[7] *= params[-1]
-        self.Y0[0] -= self.Y0[1] + self.Y0[7]
+        self.Y0[0] = Pop - self.Y0[1:].sum()
 
         return self.error(params[:-4])
 

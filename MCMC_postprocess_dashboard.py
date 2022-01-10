@@ -81,7 +81,10 @@ def MCMC_postprocess(ResPath, nsample=500, burnin=None, forecast=True, scenario=
             'R*'
     ]
     n_compartments = len(compartments)
+####################################################
     quantiles = np.array([0.025, 0.5, 0.975])
+####################################################
+    
     results_df = pd.DataFrame(index = pd.date_range(day_init+pd.Timedelta(t_list[0], 'days'), day_init+pd.Timedelta(t_list[-1], 'days')), columns = compartments)
     
     intervals_dict = dict(zip(['S', 'U', 'I', 'H', 'T', 'E', 'R', 'V1', 'V2', 'V2p', 'R_d', 'N_p', 'N_t'],[inter['credible'] for inter in interval]))
@@ -113,7 +116,7 @@ def MCMC_postprocess(ResPath, nsample=500, burnin=None, forecast=True, scenario=
         results_df['Nuovi positivi su 7 giorni'] = nuovi_positivi_settimana[i] 
         results_df['Percentuale di ospedalizzati'] = percentuale_ospedalizzati[i] 
         results_df['R*'] = r_star[i] 
-        results_df.to_json(ResPath + f'simdf_MCMC{"_"+str(x).rsplit(".")[-1] if not x==0.5 else ""}.json', date_format='iso')
+        results_df.to_json(ResPath + f'simdf_MCMC{"_"+str(x).rsplit(".")[-1]}.json', date_format='iso')
 
     return data, interval
 	
@@ -137,7 +140,7 @@ if __name__ == '__main__':
         burnin = None
 
     if len(sys.argv) > 4:
-        forecast = int(sys.argv[4])
+        forecast = bool(int(sys.argv[4]))
     else:
         forecast = True
     
