@@ -261,6 +261,9 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
 
     if restart_file:
         T0 = (day_restart - day_init).days
+        idx = np.concatenate((params.times,[(day_end-day_init).days]))<T0
+        idy = ~params.getConstant()
+        params.mask[np.ix_(idx, idy)] = 0 
     else:
         T0 = 0
    
