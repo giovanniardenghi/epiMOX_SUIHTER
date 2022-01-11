@@ -51,7 +51,7 @@ class SUIHTER:
         self.variant_prevalence = 0 
         self.variant_prevalence_hosp = 0
         self.sigma1v = self.sigma2v = self.sigma2pv = 0
-        self.variant_factor = self.kappa1 = self.kappa2 = self.xi = 0
+        self.variant_factor = self.kappa1 = self.kappa2 = self.xi_H = self.xi_T = 0
 
         self.R_d = np.zeros((t_list[-1]+1, self.Ns)).squeeze()
         self.Sfrac = np.zeros((t_list[-1]+1, self.Ns)).squeeze()
@@ -70,12 +70,13 @@ class SUIHTER:
 
     def initialize_variant(self, variant, variant_prevalence):
         self.variant_prevalence = variant_prevalence
-        self.variant_prevalence_hosp = 0.25
+        self.variant_prevalence_hosp = variant_prevalence
         self.variant_factor = variant['factor']
         self.kappa1 = variant['kappa1']
         self.kappa2 = variant['kappa2']
         self.kappa2p = variant['kappa2p']
-        self.xi = variant['xi']
+        self.xi_H = variant['xi_H']
+        self.xi_T = variant['xi_T']
         self.sigma1v = 1 - self.kappa1 + self.kappa1 * self.sigma1
         self.sigma2v = 1 - self.kappa2 + self.kappa2 * self.sigma2
         self.sigma2pv = 1 - self.kappa2p + self.kappa2p * self.sigma2p
@@ -88,7 +89,8 @@ class SUIHTER:
         self.kappa1 = 0
         self.kappa2 = 0
         self.kappa2p = 0
-        self.xi = 0
+        self.xi_H = 0
+        self.xi_T = 0
         self.sigma1v = 0
         self.sigma2v = 0
         self.sigma2pv = 0
@@ -332,8 +334,10 @@ class SUIHTER:
         UbtoR = rho_U * Ub
         UvtoR = rho_U * Uv
         omega_I_factor = ((casesS + self.h1 * casesV1 + self.h2 * casesV2)/(casesSini + self.h1 * casesV1ini + self.h2 * casesV2ini) *
-                         (1 - self.xi * current_variant_prevalence)/(1-self.xi*self.variant_prevalence_hosp)) if self.forecast else 1
-        omega_H_factor = ((casesS + self.t1 * casesV1 + self.t2 * casesV2)/(casesSini + self.t1 * casesV1ini + self.t2 * casesV2ini)) if self.forecast else 1
+                         (1 - self.xi_H * current_variant_prevalence)/(1-self.xi_H*self.variant_prevalence_hosp)) if self.forecast else 1
+        omega_H_factor = ((casesS + self.t1 * casesV1 + self.t2 * casesV2)/(casesSini + self.t1 * casesV1ini + self.t2 * casesV2ini) 
+                * (1 - self.xi_T * current_variant_prevalence)/(1-self.xi_T*self.variant_prevalence_hosp)
+                ) if self.forecast else 1
         gamma_I_factor = ((casesS + self.m1 * casesV1 + self.m2 * casesV2)/(casesSini + self.m1 * casesV1ini + self.m2 * casesV2ini)) if self.forecast else 1
         ItoH = omega_I * I + omega_I * I * (omega_I_factor - 1)
         ItoR = rho_I * I - omega_I * I * (omega_I_factor - 1) - gamma_I * I * (gamma_I_factor - 1)

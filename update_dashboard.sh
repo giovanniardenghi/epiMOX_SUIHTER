@@ -1,5 +1,5 @@
 #!/bin/bash
-today=$(date -Idate --date='Yesterday')
+today=$(date -Idate) # --date='Yesterday')
 endforecast=$(date -Idate --date="+90 days")
 echo $today
 
@@ -11,9 +11,9 @@ python3 epiMOX_class.py Tests/Dashboard/Calibration
 cp Tests/Dashboard/Calibration/param_est_d$today-Italia.csv Tests/Dashboard/Calibration/param_est_latest.csv
 
 #Calibrazione MCMC
-#sed "s/TODAY/${today}/g" Tests/Dashboard/Calibration/input.inp_templateMCMC > Tests/Dashboard/Calibration/input.inp
-#python3 epiMOX_MCMC_class.py Tests/Dashboard/Calibration/ 300000
-#python3 MCMC_postprocess.py Tests/Dashboard/Calibration/ 10000 150000
+sed "s/TODAY/${today}/g" Tests/Dashboard/CalibrationRed/input.inp_templateMCMC > Tests/Dashboard/Calibration/input.inp
+python3 epiMOX_MCMC_class.py Tests/Dashboard/Calibration/ 300000
+python3 MCMC_postprocess.py Tests/Dashboard/Calibration/ 10000 150000
 
 for scenario in Base Controlled Yellow Orange Red
 do
