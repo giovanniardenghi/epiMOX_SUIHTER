@@ -86,6 +86,8 @@ def estimate_IFR(country, Pop):
             IFR_t += (infected_age[i].Infected * IFR_age[i] * (pop_age[i]-vaccini_by_age[i-1].prima_dose.cumsum()) +\
                      infected_age[i].Infected * IFR_age[i] * m1[i] * (vaccini_by_age[i-1].prima_dose.cumsum() - vaccini_by_age[i-1].seconda_dose.cumsum()) +\
                      infected_age[i].Infected * IFR_age[i] * m2[i] *  vaccini_by_age[i-1].seconda_dose.cumsum()) / pop_age[i]
+    IFR_t.loc[pd.to_datetime('2020-02-24')] = 0.014
+    IFR_t = IFR_t.reindex(index=pd.date_range(min(IFR_t.index), max(IFR_t.index))).ffill()
     return IFR_t
 
 

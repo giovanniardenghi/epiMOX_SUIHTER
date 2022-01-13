@@ -162,13 +162,12 @@ class Params():
 
     def compute_delta(self, IFR_t, CFR_t, data_end):
         epi_start = pd.to_datetime('2020-02-24')
-        day_ISS_data = pd.to_datetime('2020-12-08')
         day_init = self.dataStart
         day_end = data_end if data_end in IFR_t.index else data_end - pd.Timedelta(1,'day') 
-        Delta_t = np.clip(IFR_t.loc[day_ISS_data:day_end].values/CFR_t[int((day_ISS_data-epi_start).days):int((day_end-epi_start).days)+1],0,1)
-        Delta_t =  (pd.Series(Delta_t[int((day_init-day_ISS_data).days):int((day_end-day_ISS_data).days)+1]).rolling(center=True,window=7,min_periods=1).mean())/8
+        Delta_t = np.clip(IFR_t.loc[epi_start:day_end].values/CFR_t[:(day_end-epi_start).days+1],0,1)
+        Delta_t =  (pd.Series(Delta_t[(day_init-epi_start).days:(day_end-epi_start).days+1]).rolling(center=True,window=7,min_periods=1).mean())/8
         
-        self.delta = si.interp1d(range(int((day_end-day_init).days)-19),Delta_t[:-20],fill_value="extrapolate",kind='nearest')
+        self.delta = si.interp1d(range((day_end-day_init).days-19),Delta_t[:-20],fill_value="extrapolate",kind='nearest')
         return Delta_t
 
     def addPhase(self,ndays):

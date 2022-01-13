@@ -37,9 +37,7 @@ class SUIHTER:
 
         self.data = data
 
-        self.inYellow = False
-        self.inOrange = False
-        self.inRed = False
+        self.color = None
         self.timeNPI = 0
         self.adapNPI = 5
 
@@ -100,7 +98,7 @@ class SUIHTER:
         regions_colors = pd.read_csv('https://raw.githubusercontent.com/giovanniardenghi/dpc-covid-data/main/SUIHTER/coloreRegioni.csv')
         regions_colors['Data'] = pd.to_datetime(regions_colors.Data)
         regions_colors.set_index('Data', inplace=True)
-        regions_colors.index += pd.Timedelta(self.adapNPI, 'days')
+        regions_colors.index += pd.Timedelta(4, 'days')
         
         regions_colors = regions_colors.reindex(index=pd.date_range(regions_colors.index[0], self.DPC_start + pd.Timedelta(self.t_list[-1], 'days'))).ffill()
 
@@ -110,7 +108,7 @@ class SUIHTER:
         current = dict.fromkeys(scenarios['White'].keys())
         forecast = dict.fromkeys(self.t_list, dict.fromkeys(scenarios['White'].keys()))
 
-        last_phase = pd.date_range(self.params.dataStart + pd.Timedelta(self.params.times[-1] + 1), self.params.dataEnd)
+        last_phase = pd.date_range(self.params.dataStart + pd.Timedelta(self.params.times[-1] + 1, 'days'), self.DPC_end)
         forecast_phase = pd.date_range(self.DPC_end + pd.Timedelta(1, 'day'),  self.DPC_start + pd.Timedelta(self.t_list[-1], 'days'))
 
         for vax in scenarios['White'].keys():
@@ -118,6 +116,7 @@ class SUIHTER:
             current[vax] = (regions_tmp.mean().sum()/Pop.sum()).round(4)
 
         self.scenarios_dict['Current'] = current 
+
 
         for idx, vax in enumerate(scenarios['White'].keys()):
             regions_tmp = regions_colors.loc[forecast_phase].replace({x:y[vax] for x,y in scenarios.items()}).mul(Pop,axis=1)
@@ -187,33 +186,36 @@ class SUIHTER:
             S_gp = tamponi * self.Sfrac[t_int]
             S_no_gp = S_vaccinabili - S_gp
 
-            # attuale
-            beta_gp =       0.0404
-            beta_test =     0.0326
-            beta_novax =    0.0197
-
-            # gialla
-            beta_gp_y =     0.036 #0.0404
-            beta_test_y =   0.029 #0.0318
-            beta_novax_y =  0.017 #0.0195
-
-            # arancione
-            beta_gp_a =     0.032#0.0399
-            beta_test_a =   0.026#0.0296
-            beta_novax_a =  0.015#0.0189
-
-            # rossa
-            beta_gp_r =     0.0159
-            beta_test_r =   0.0149
-            beta_novax_r =  0.0079
-
-
             vax = V1 + V2 + V2p
-            betaV_new = beta_gp
-            betaS_new = (beta_test * S_gp + beta_gp * S_non_vaccinabili + beta_novax * S_no_gp) / S
-            betaS_new_y = (beta_test_y * S_gp + beta_gp * S_non_vaccinabili + beta_novax_y * S_no_gp) / S
-            betaS_new_a = (beta_test_a * S_gp + beta_gp * S_non_vaccinabili + beta_novax_a * S_no_gp) / S
-            betaS_new_r = (beta_test_r * S_gp + beta_gp_r * S_non_vaccinabili + beta_novax_r * S_no_gp) / S
+            beta_now = self.scenarios_dict['Current']
+            beta_new = self.scenarios_dict['Forecast'][t_int]
+            betaV_now = beta_now['beta_gp']
+            betaS_now = (beta_now['beta_test'] * S_gp + beta_now['beta_gp'] * S_non_vaccinabili + beta_now['beta_novax'] * S_no_gp) / S
+            betaV_new = beta_new['beta_gp'] 
+            betaS_new = (beta_new['beta_test'] * S_gp + beta_new['beta_gp'] * S_non_vaccinabili + beta_new['beta_novax'] * S_no_gp) / S
+
+            if not self.scenario:
+                pass
+            else:
+                if self.scenario == 'Controlled':
+                    betaV_y = self.scenarios_dict['Yellow']['beta_gp']
+                    betaS_y = (self.scenarios_dict['Yellow']['beta_test'] * S_gp + self.scenarios_dict['Yellow']['beta_gp'] * S_non_vaccinabili + self.scenarios_dict['Yellow']['beta_novax'] * S_no_gp) / S
+                    betaV_a = self.scenarios_dict['Orange']['beta_gp']
+                    betaS_a = (self.scenarios_dict['Orange']['beta_test'] * S_gp + self.scenarios_dict['Orange']['beta_gp'] * S_non_vaccinabili + self.scenarios_dict['Orange']['beta_novax'] * S_no_gp) / S
+                    betaV_r = self.scenarios_dict['Red']['beta_gp']
+                    betaS_r = (self.scenarios_dict['Red']['beta_test'] * S_gp + self.scenarios_dict['Red']['beta_gp'] * S_non_vaccinabili + self.scenarios_dict['Red']['beta_novax'] * S_no_gp) / S
+                elif self.scenario != 'Controlled' and  self.color != self.scenario:
+                    self.color = self.scenario
+                    self.timeNPI = self.t_list[0] + 3
+                if self.color and t > self.timeNPI:
+                    beta_gp = self.scenarios_dict[self.color]['beta_gp']
+                    beta_test = self.scenarios_dict[self.color]['beta_test']
+                    beta_novax = self.scenarios_dict[self.color]['beta_novax']
+                    betaV_color = beta_gp
+                    betaS_color = (beta_test * S_gp + beta_gp * S_non_vaccinabili + beta_novax * S_no_gp) / S
+                    betaS_new = (self.scenarios_dict['Forecast'][self.timeNPI-1]['beta_test'] * S_gp + self.scenarios_dict['Forecast'][self.timeNPI-1]['beta_gp'] * S_non_vaccinabili + self.scenarios_dict['Forecast'][self.timeNPI-1]['beta_novax'] * S_no_gp) / S
+                    betaV_new = self.scenarios_dict['Forecast'][self.timeNPI-1]['beta_gp']
+
 
         StoUb = S * beta_Ub * Ub / self.Pop
         StoUv = S * beta_Uv * Uv / self.Pop
@@ -234,89 +236,59 @@ class SUIHTER:
             tauratioS = 1
             tauratio = 1
 
-            # Nessuno screnario 
-            if self.scenario==None:
+            # Nessuno Scenario 
+            if not self.scenario:
                 pass
-            # Screnario giallo
-            elif self.scenario=='Yellow':
-                if t - self.t_list[0] > 3:
-                    if self.inYellow == False:
-                        self.inRed =False 
-                        self.inOrange = False
-                        self.inYellow = True
-                        self.timeNPI = t
-                    if t-self.timeNPI > self.adapNPI:
-                        tauratioS = betaS_new_y / betaS_new
-                        tauratio  = beta_gp_y / betaV_new
-                    else:
-                        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_y / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*1
-                        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_y / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*1
-            # Screnario arancione
-            elif self.scenario=='Orange':
-                if t - self.t_list[0] > 3:
-                    if self.inOrange == False:
-                        self.inRed = False
-                        self.inOrange = True
-                        self.inYellow = False
-                        self.timeNPI = t
-                    if t-self.timeNPI > self.adapNPI:
-                        tauratioS = betaS_new_a / betaS_new
-                        tauratio  = beta_gp_a / betaV_new
-                    else:
-                        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_a / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*1
-                        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_a / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*1
-            # Screnario rosso
-            elif self.scenario=='Red':
-                if t - self.t_list[0] > 3:
-                    if self.inRed == False:
-                        self.inRed = True
-                        self.inOrange = False
-                        self.inYellow = False
-                        self.timeNPI = t
-                    if t-self.timeNPI > self.adapNPI:
-                        tauratioS = betaS_new_r / betaS_new
-                        tauratio  = beta_gp_r / betaV_new
-                    else:
-                        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_r / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*1
-                        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_r / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*1
             # Scenario Controllato
             elif self.scenario=='Controlled':
-                if (delta * U > 250/1e5/7*self.Pop) and (H > 0.4*maxH) and (T > 0.3*maxT):
-                    if self.inRed == False:
-                        self.inRed = True
-                        self.inOrange = False
-                        self.inYellow = False
-                        self.timeNPI = t
+                if t - self.t_list[0] > 3:
+                    if (delta * U > 250/1e5/7*self.Pop) and (H > 0.4*maxH) and (T > 0.3*maxT):
+                        if self.color != 'Red':
+                            self.color = 'Red'
+                            self.timeNPI = t_int
+                        if t-self.timeNPI > self.adapNPI:
+                            tauratioS = betaS_r / betaS_now
+                            tauratio  = betaV_r / betaV_now
+                        else:
+                            tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_r / betaS_now + (1-(t-self.timeNPI)/self.adapNPI)*betaS_a / betaS_now
+                            tauratio  = (t-self.timeNPI)/self.adapNPI*betaV_r / betaV_now + (1-(t-self.timeNPI)/self.adapNPI)*betaV_a / betaV_now
+                    elif (delta * U > 150/1e5/7*self.Pop) and (H > 0.3*maxH) and (T > 0.2*maxT):
+                        if self.color != 'Orange':
+                            self.color = 'Orange'
+                            self.timeNPI = t_int
+                        if t-self.timeNPI > self.adapNPI:
+                            tauratioS = betaS_r / betaS_now
+                            tauratio  = betaV_r / betaV_now
+                        else:
+                            tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_r / betaS_now + (1-(t-self.timeNPI)/self.adapNPI)*betaS_y / betaS_now
+                            tauratio  = (t-self.timeNPI)/self.adapNPI*betaV_r / betaV_now + (1-(t-self.timeNPI)/self.adapNPI)*betaV_y / betaV_now
+                    elif (delta * U > 150/1e5/7*self.Pop) or ((delta * U > 50/1e5/7*self.Pop) and (H > 0.15*maxH) and (T > 0.1*maxT)):
+                        if self.color != 'Yellow':
+                            self.color = 'Yellow'
+                            self.timeNPI = t_int
+                        if t-self.timeNPI > self.adapNPI:
+                            tauratioS = betaS_r / betaS_now
+                            tauratio  = betaV_r / betaV_now
+                        else:
+                            tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_r / betaS_now + (1-(t-self.timeNPI)/self.adapNPI)
+                            tauratio  = (t-self.timeNPI)/self.adapNPI*betaV_r / betaV_now + (1-(t-self.timeNPI)/self.adapNPI)
+                else:
+                    tauratioS = betaS_new / betaS_now
+                    tauratio  = betaV_new / betaV_now
+            # Scenari colori 
+            else:
+                if t - self.t_list[0] > 3:
                     if t-self.timeNPI > self.adapNPI:
-                        tauratioS = betaS_new_r / betaS_new
-                        tauratio  = beta_gp_r / betaV_new
+                        tauratioS = betaS_color / betaS_now
+                        tauratio  = betaV_color / betaV_now
                     else:
-                        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_r / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*betaS_new_a / betaS_new
-                        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_r / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*beta_gp_a / betaV_new
-                elif (delta * U > 150/1e5/7*self.Pop) and (H > 0.3*maxH) and (T > 0.2*maxT):
-                    if self.inOrange == False:
-                        self.inRed = False
-                        self.inOrange = True
-                        self.inYellow = False
-                        self.timeNPI = t
-                    if t-self.timeNPI > self.adapNPI:
-                        tauratioS = betaS_new_a / betaS_new
-                        tauratio  = beta_gp_a / betaV_new
-                    else:
-                        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_a / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*betaS_new_y / betaS_new
-                        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_a / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*beta_gp_y / betaV_new
-                elif (delta * U > 150/1e5/7*self.Pop) or ((delta * U > 50/1e5/7*self.Pop) and (H > 0.15*maxH) and (T > 0.1*maxT)):
-                    if self.inYellow == False:
-                        self.inRed = False
-                        self.inOrange = False
-                        self.inYellow = True
-                        self.timeNPI = t
-                    if t-self.timeNPI > self.adapNPI:
-                        tauratioS = betaS_new_y / betaS_new
-                        tauratio  = beta_gp_y / betaV_new
-                    else:
-                        tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_new_y / betaS_new + (1-(t-self.timeNPI)/self.adapNPI)*1
-                        tauratio  = (t-self.timeNPI)/self.adapNPI*beta_gp_y / betaV_new + (1-(t-self.timeNPI)/self.adapNPI)*1
+                        tauratioS = (t-self.timeNPI)/self.adapNPI * betaS_color / betaS_now + (1-(t-self.timeNPI)/self.adapNPI) * betaS_new / betaS_now
+                        tauratio  = (t-self.timeNPI)/self.adapNPI * betaV_color / betaV_now + (1-(t-self.timeNPI)/self.adapNPI) * betaV_new / betaV_now
+
+                else:
+                    tauratioS = betaS_new / betaS_now
+                    tauratio  = betaV_new / betaV_now
+
             isolation_effect = 1 - I * 3 /self.Pop
             StoUb *=   tauratioS * isolation_effect
             StoUv *=   tauratioS * isolation_effect
@@ -369,7 +341,7 @@ class SUIHTER:
         self.forecast = False
         self.t_list = t_list.copy()
         self.wipe_variant()
-        self.inYellow = self.inOrange = self.inRed = False
+        self.color = None
         self.timeNPI = 0
         self.params.params[self.params.getMask()] = params[:-4]
         self.params.forecast(self.params.dataEnd,self.t_list[-1],0,None)
@@ -410,7 +382,7 @@ class SUIHTER:
             self.solve()
         
         results = self.Y[:,self.t_list].copy()
-        results.resize(results.shape[0]+3, results.shape[1])
+        results.resize((results.shape[0]+3, results.shape[1], self.Ns)).squeeze()
         results[1] += results[2]
         results = np.delete(results, 2, 0)
         results[-3] = self.R_d[self.t_list].flatten()
@@ -464,12 +436,12 @@ class SUIHTER:
         # compute errors
         # Flatten the solution arrays to match data format
         # Daily Extinct and New positives data are already smoothed with a weekly rolling mean
-        errorI = I.flatten('F') - self.data['Isolated'].values
-        errorH = H.flatten('F') - self.data['Hospitalized'].values
-        errorT = T.flatten('F') - self.data['Threatened'].values
-        errorR = self.R_d[self.t_list].flatten('F') - self.data['Recovered'].values
+        errorI = I.flatten() - self.data['Isolated'].values
+        errorH = H.flatten() - self.data['Hospitalized'].values
+        errorT = T.flatten() - self.data['Threatened'].values
+        errorR = self.R_d[self.t_list].flatten() - self.data['Recovered'].values
         errorE = dE - self.data['Daily_extinct'].values
-        errorNP = (self.params.params_time[self.t_list,2] * U).flatten('F') - self.data['New_positives'].rolling(window=7,min_periods=1,center=True).mean().values
+        errorNP = (self.params.params_time[self.t_list,2] * U).flatten() - self.data['New_positives'].rolling(window=7,min_periods=1,center=True).mean().values
 
         # compute errors weights
         one = np.ones(len(errorI))

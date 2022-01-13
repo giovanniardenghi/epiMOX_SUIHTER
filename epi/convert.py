@@ -45,7 +45,12 @@ def converter(model, dati, regione, Nc):
         # New treathened 
         res_np[:, 10] = res['ingressi_terapia_intensiva'].values
         # Daily extinct
-        res_np[:, 11] = res['deceduti'].diff().rolling(window=7,min_periods=1,center=True).mean().values
+        if regione == 'Regions':
+            for i, df_i in res.groupby('codice_regione'):
+                i -= 1 if i>3 else 0 
+                res_np[(i-1)*len(df_i):i*len(df_i), 11] = df_i['deceduti'].diff().rolling(window=7,min_periods=1,center=True).mean().values
+        else:
+            res_np[:, 11] = res['deceduti'].diff().rolling(window=7,min_periods=1,center=True).mean().values
     elif model == 'SEIRD':
         # Infected
         res_np[:, 4] = res['ricoverati_con_sintomi'].values + \
