@@ -1,0 +1,41 @@
+### Model
+model = SIR
+country = Italia
+param_type = const
+param_file =  param_est_d2021-04-10-Italia_age.csv
+#restart_file = Tests/DashboardMCMC/restart.h5
+#day_restart = 2021-11-11
+only_forecast=0
+scenario =
+by_age = 1
+AgeContacts = contacts_20_new.txt
+
+Tf = 2021-04-10
+dt = 1
+edges_file = no_edges.csv
+borders_file =
+map_file =
+
+mobility = transport
+mixing = 2.25
+
+### Estimation : 1 estimate , 0 manual
+estim_param = 0
+DPC_start = 2021-02-20
+DPC_end = 2021-04-10
+
+## Variant
+variant = 
+variant_prevalence = 0.6
+
+### Extrapolation
+extrapolation = 0
+
+### Output
+out_type = h5
+plotting_step = 1
+gen_video = 0
+shape_file = ProvinceItalia.shp
+
+### Save code for reproducibility
+save_code=1

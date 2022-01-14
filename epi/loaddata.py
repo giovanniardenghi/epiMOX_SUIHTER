@@ -123,12 +123,12 @@ def parsedata_plot(Data):
 # Parse the model
 def _parsedata_model(Data):
     model = Data['model']
-    if model not in ['SUIHTER', 'SEIRD']:
-        sys.exit('Error - model should be either "SUIHTER" or "SEIRD"')
+    if model not in ['SUIHTER', 'SIR']:
+        sys.exit('Error - model should be either "SUIHTER" or "SIR"')
     elif model == 'SUIHTER':
         Nc = 7
-    elif model == 'SEIRD':
-        Nc = 5
+    elif model == 'SIR':
+        Nc = 3
 
     return(model, Nc)
 

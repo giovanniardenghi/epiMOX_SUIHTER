@@ -117,101 +117,110 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
     
     eData = correct_data(eData, country)
     
-    IFR_t = estimate_IFR(country, Pop)
-    CFR_t = estimate_CFR(eData)
-    Delta_t = params.compute_delta(IFR_t, CFR_t, day_end)
+    if model == 'SUIHTER':
+        IFR_t = estimate_IFR(country, Pop)
+        CFR_t = estimate_CFR(eData)
+        Delta_t = params.compute_delta(IFR_t, CFR_t, day_end)
 
-    UD = eData['nuovi_positivi'].rolling(center=True,window=7,min_periods=1).mean()/Delta_t
-    UD.index=pd.date_range(epi_start,epi_start+pd.Timedelta(UD.index[-1],'days'))
+        UD = eData['nuovi_positivi'].rolling(center=True,window=7,min_periods=1).mean()/Delta_t
+        UD.index=pd.date_range(epi_start,epi_start+pd.Timedelta(UD.index[-1],'days'))
 
     eData = eData[(eData["data"]>=day_init.isoformat()) & (eData["data"]<=day_end.isoformat())]
     eData = eData.reset_index(drop=True)
     eData = converter(model, eData, country, Nc)
     eData = eData.reset_index(drop=True)
     
-    if country=='Italia':
-        ric = pd.read_csv('https://raw.githubusercontent.com/floatingpurr/covid-19_sorveglianza_integrata_italia/main/data/latest/ricoveri.csv')
-        #ric = pd.read_csv('https://raw.githubusercontent.com/floatingpurr/covid-19_sorveglianza_integrata_italia/main/data/2021-10-17/ricoveri.csv')
-        ric = ric.iloc[:-1]
-        ric['DATARICOVERO1'] = pd.to_datetime(ric['DATARICOVERO1'],format='%d/%m/%Y')
-        ric.set_index('DATARICOVERO1',inplace=True)
-        offset = 3 if day_end in ric.index else 4
-        omegaI = pd.Series(pd.to_numeric((ric.loc[day_init:day_end-pd.Timedelta(offset,'day'),'RICOVERI']).rolling(center=True,window=7,min_periods=1).mean().values)/eData['Isolated'].values[:-offset]).rolling(center=True,window=7,min_periods=1).mean()
-        params.omegaI = si.interp1d(range((day_end-day_init).days-offset+1),omegaI,fill_value='extrapolate',kind='nearest')
-    else:
-        params.omegaI_vec = np.loadtxt('omegaI.txt')
-    omegaH = pd.Series(eData['New_threatened'].rolling(center=True,window=7,min_periods=1).mean().values/eData['Hospitalized'].values).bfill()#.rolling(center=True,window=7,min_periods=1).mean()
-
-    params.omegaH = si.interp1d(range((day_end-day_init).days+1),omegaH,fill_value='extrapolate',kind='nearest')
-    params.define_params_time(Tf)
-    for t in range(Tf+1):
-        params.params_time[t,2] = params.delta(t)
+    if model == 'SUIHTER':
         if country=='Italia':
-            params.params_time[t,3] = params.omegaI(t)
+            ric = pd.read_csv('https://raw.githubusercontent.com/floatingpurr/covid-19_sorveglianza_integrata_italia/main/data/latest/ricoveri.csv')
+            #ric = pd.read_csv('https://raw.githubusercontent.com/floatingpurr/covid-19_sorveglianza_integrata_italia/main/data/2021-10-17/ricoveri.csv')
+            ric = ric.iloc[:-1]
+            ric['DATARICOVERO1'] = pd.to_datetime(ric['DATARICOVERO1'],format='%d/%m/%Y')
+            ric.set_index('DATARICOVERO1',inplace=True)
+            offset = 3 if day_end in ric.index else 4
+            omegaI = pd.Series(pd.to_numeric((ric.loc[day_init:day_end-pd.Timedelta(offset,'day'),'RICOVERI']).rolling(center=True,window=7,min_periods=1).mean().values)/eData['Isolated'].values[:-offset]).rolling(center=True,window=7,min_periods=1).mean()
+            params.omegaI = si.interp1d(range((day_end-day_init).days-offset+1),omegaI,fill_value='extrapolate',kind='nearest')
         else:
-            params.params_time[t,3] = params.omegaI_vec[t]
-        params.params_time[t,4] = params.omegaH(t)
-    
-    if country=='Italia':
-        params.omegaI_vec = np.copy(params.params_time[:,3])
-        np.savetxt('omegaI.txt',params.omegaI_vec)
+            params.omegaI_vec = np.loadtxt('omegaI.txt')
+        omegaH = pd.Series(eData['New_threatened'].rolling(center=True,window=7,min_periods=1).mean().values/eData['Hospitalized'].values).bfill()#.rolling(center=True,window=7,min_periods=1).mean()
 
-    params.omegaH_vec = np.copy(params.params_time[:,4])
-    np.savetxt('omegaH.txt',params.omegaH_vec)
+        params.omegaH = si.interp1d(range((day_end-day_init).days+1),omegaH,fill_value='extrapolate',kind='nearest')
+        params.define_params_time(Tf)
+        for t in range(Tf+1):
+            params.params_time[t,2] = params.delta(t)
+            if country=='Italia':
+                params.params_time[t,3] = params.omegaI(t)
+            else:
+                params.params_time[t,3] = params.omegaI_vec[t]
+            params.params_time[t,4] = params.omegaH(t)
+        
+        if country=='Italia':
+            params.omegaI_vec = np.copy(params.params_time[:,3])
+            np.savetxt('omegaI.txt',params.omegaI_vec)
 
+        params.omegaH_vec = np.copy(params.params_time[:,4])
+        np.savetxt('omegaH.txt',params.omegaH_vec)
+    else:
+        params.define_params_time(Tf)
 
     if by_age:
-        perc = pd.read_csv('https://raw.githubusercontent.com/giovanniardenghi/dpc-covid-data/main/SUIHTER/stato_clinico.csv')
+        perc = pd.read_csv(f'~/dpc-covid-data/SUIHTER/stato_clinico_{model}.csv')
+        #perc = pd.read_csv(f'https://raw.githubusercontent.com/giovanniardenghi/dpc-covid-data/main/SUIHTER/stato_clinico_{model}.csv')
         perc = perc[(perc['Data']>=DPC_start) & (perc['Data']<=DPC_end)] 
         eData = pd.DataFrame(np.repeat(eData.values,Ns,axis=0),columns=eData.columns)
-        eData[perc.columns[3:]] = eData[perc.columns[3:]].mul(perc[perc.columns[3:]].values)
+        eData[perc.columns[2:]] = eData[perc.columns[2:]].mul(perc[perc.columns[2:]].values)
         eData['Age'] = perc['Età'].values
         eData.sort_values(by=['Age','time'])
 
     initI = eData[eData['time']==0].copy()
     initI = initI.reset_index(drop=True)
-    dates = pd.date_range(initI['data'].iloc[0]-pd.Timedelta(7,'days'),initI['data'].iloc[0]+pd.Timedelta(7,'days'))
 
-    initI['Undetected'] = UD.loc[dates].mean()
+    if model == 'SUIHTER':
+        dates = pd.date_range(initI['data'].iloc[0]-pd.Timedelta(7,'days'),initI['data'].iloc[0]+pd.Timedelta(7,'days'))
 
-    Recovered = (1/IFR_t.loc[day_init]-1)*initI['Extinct'].sum()
-    initI['Recovered'] = Recovered
+        if Ns > 1:
+            initI['Undetected'] = UD.loc[dates].groupby(level=1).mean()
+        else:
+            initI['Undetected'] = UD.loc[dates].mean()
 
+        Recovered = (1/IFR_t.loc[day_init]-1)*initI['Extinct'].sum()
+        initI['Recovered'] = Recovered
 
-    day_init_vaccines = day_init - pd.Timedelta(14, 'days')
-    vaccines = pd.read_csv('https://raw.githubusercontent.com/giovanniardenghi/dpc-covid-data/main/data/vaccini_regioni/'+country+'.csv')
-    #vaccines = pd.read_csv('~/dpc-covid-data/data/vaccini_regioni/'+country+'.csv')
-    vaccines['data'] = pd.to_datetime(vaccines.data)
-    vaccines.set_index('data',inplace=True)
-    vaccines.fillna(0,inplace=True)
-    #vaccines[['prima_dose','seconda_dose']]=0
-    vaccines_init = vaccines[:day_init_vaccines-pd.Timedelta(1,'day')].sum()
-    vaccines = vaccines.loc[day_init_vaccines:]
-    vaccines.index = pd.to_datetime(vaccines.index)
-    vaccines = vaccines.reindex(pd.date_range(vaccines.index[0],pd.to_datetime(Tf_data)),columns=['prima_dose', 'seconda_dose', 'terza_dose']).ffill()
-    maxV = 54009901
-    #maxV = pd.read_csv('https://raw.githubusercontent.com/italia/covid19-opendata-vaccini/master/dati/platea.csv').totale_popolazione.sum()
+        day_init_vaccines = day_init - pd.Timedelta(14, 'days')
+        vaccines = pd.read_csv('https://raw.githubusercontent.com/giovanniardenghi/dpc-covid-data/main/data/vaccini_regioni/'+country+'.csv')
+        #vaccines = pd.read_csv('~/dpc-covid-data/data/vaccini_regioni/'+country+'.csv')
+        vaccines['data'] = pd.to_datetime(vaccines.data)
+        vaccines.set_index('data',inplace=True)
+        vaccines.fillna(0,inplace=True)
+        #vaccines[['prima_dose','seconda_dose']]=0
+        vaccines_init = vaccines[:day_init_vaccines-pd.Timedelta(1,'day')].sum()
+        vaccines = vaccines.loc[day_init_vaccines:]
+        vaccines.index = pd.to_datetime(vaccines.index)
+        vaccines = vaccines.reindex(pd.date_range(vaccines.index[0],pd.to_datetime(Tf_data)),columns=['prima_dose', 'seconda_dose', 'terza_dose']).ffill()
+        maxV = 54009901
+        #maxV = pd.read_csv('https://raw.githubusercontent.com/italia/covid19-opendata-vaccini/master/dati/platea.csv').totale_popolazione.sum()
 
-    gp_from_test = pd.read_csv('https://raw.githubusercontent.com/giovanniardenghi/dpc-covid-data/main/data/gp_from_test.csv')
-    gp_from_test = gp_from_test[gp_from_test['data']>=DPC_start] 
-    tamponi = gp_from_test.issued_for_tests.values
+        gp_from_test = pd.read_csv('https://raw.githubusercontent.com/giovanniardenghi/dpc-covid-data/main/data/gp_from_test.csv')
+        gp_from_test = gp_from_test[gp_from_test['data']>=DPC_start] 
+        tamponi = gp_from_test.issued_for_tests.values
 
     ### Init compartments
     # Init compartment for the "proven cases"
-    Y0 = np.zeros((Nc+3+1,Ns)).squeeze() # 3 vaccinated compartments
-    if restart_file:
-        df_restart = pd.read_hdf(restart_file)
-        init_restart = df_restart[df_restart['date']<=day_restart].iloc[:,3:14].values
-        Y0[:2] = init_restart[-1,:2]
-        Y0[2] = 0
-        Y0[3:] = init_restart[-1,2:-1]
-        R_d = init_restart[:,-1]
-        Sfrac = np.zeros(init_restart.shape[0])
-        Sfrac[0] = init_restart[0,0] / ( init_restart[0,0] + init_restart[0,-5] - init_restart[0,-1] )
-        Sfrac[1:] = init_restart[:-1,0] / ( init_restart[:-1,0] + init_restart[:-1,-5] - init_restart[:-1,-1] )
-    else:
-        Y0[0] = Pop
-        if model == 'SUIHTER':
+    if model == 'SUIHTER':
+        Y0 = np.zeros((Nc+3+1,Ns)).squeeze() # 3 vaccinated compartments
+        if restart_file:
+            df_restart = pd.read_hdf(restart_file)
+            init_restart = df_restart[df_restart['date']<=day_restart].iloc[:,3:14].values
+            Y0[:2] = init_restart[-1,:2]
+            Y0[2] = 0
+            Y0[3:] = init_restart[-1,2:-1]
+            R_d = init_restart[:,-1]
+            Sfrac = np.zeros(init_restart.shape[0])
+            Sfrac[0] = init_restart[0,0] / ( init_restart[0,0] + init_restart[0,-5] - init_restart[0,-1] )
+            Sfrac[1:] = init_restart[:-1,0] / ( init_restart[:-1,0] + init_restart[:-1,-5] - init_restart[:-1,-1] )
+
+        else:
+            Y0[0] = Pop
             Y0[0] = Y0[0] \
                         - (initI['Undetected'].values\
                         + initI['Isolated'].values\
@@ -230,13 +239,6 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
             Y0[8] = vaccines_init['prima_dose']-vaccines_init['seconda_dose'] 
             Y0[9] = vaccines_init['seconda_dose']
             Y0[10] = 0 
-        elif model == 'SEIRD':
-            Y0[0:Ns] -= (initI['Infected'].values
-                        + initI['Recovered'].values
-                        + initI['Dead'].values)
-            Y0[2*Ns:3*Ns] = initI['Infected'].values
-            Y0[3*Ns:4*Ns] = initI['Recovered'].values
-            Y0[4*Ns:5*Ns] = initI['Dead'].values
     ### Solve
 
     # Create transport matrix
@@ -256,7 +258,7 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
             OD = np.array(nx.to_numpy_matrix(nxgraph,nodelist=nodelist,weight="Border"))
 
         DO = OD.T
-        DO = DO - np.diag(np.diag(DO))
+        DO = DO# - np.diag(np.diag(DO))
     print('...done!')
 
     PopIn = DO.sum(axis=1)
@@ -281,18 +283,23 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
         model_type='_age'
     else:
         model_type=''
-    model_class = getattr(md, model+model_type)
+    model_class = getattr(md, model)
     
     print('Simulating...')
 
     if estim_param:
         print('  Estimating...')
         start_calibration_day = day_restart if day_restart else day_init
-        model_solver = model_class(Y0, params, time_list[:(day_end-start_calibration_day).days+1], day_init, day_end, eData.iloc[T0:], Pop,
+        if model == 'SUIHTER':
+            model_solver = model_class(Y0, params, time_list[:(day_end-start_calibration_day).days+1], day_init, day_end, eData.iloc[T0:], Pop,
                        by_age, geocodes, vaccines, maxV, out_path, tamponi=tamponi, scenario=None, out_type=out_type)
         if restart_file:
             model_solver.Sfrac[:T0+1] = Sfrac
             model_solver.R_d[:T0+1] = R_d
+        else:
+            model_solver = model_class(Nc, params, time_list[:(day_end-start_calibration_day).days+1], day_init, day_end, eData.iloc[T0:], Pop,
+                       by_age, geocodes, DO, out_path, out_type=out_type)
+
         model_solver.estimate()
         print('  ...done!')
     print('  Solving...')
@@ -303,11 +310,15 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
     params.forecast(eData['time'].max(),Tf, ext_deg,scenarios=scenari)
     params.extrapolate_scenario()
 
-    model_solver = model_class(Y0, params, time_list, day_init, day_end, eData.iloc[T0:], Pop,
+    if model == 'SUIHTER':
+        model_solver = model_class(Y0, params, time_list, day_init, day_end, eData.iloc[T0:], Pop,
                        by_age, geocodes, vaccines, maxV, out_path, tamponi=tamponi, scenario=scenario, out_type=out_type)
-    if restart_file:
-        model_solver.R_d[:T0+1] = R_d
-        model_solver.Sfrac[:T0+1] = Sfrac
+        if restart_file:
+            model_solver.R_d[:T0+1] = R_d
+            model_solver.Sfrac[:T0+1] = Sfrac
+    else:
+        model_solver = model_class(Nc, params, time_list, day_init, day_end, eData.iloc[T0:], Pop,
+                       by_age, geocodes, DO, out_path, out_type=out_type)
     
     model_solver.solve()
 

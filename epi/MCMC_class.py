@@ -12,6 +12,8 @@ def solveMCMC(testPath, model_solver, Y0, nsimu = 1e4, sigma = 0.1*3e4, parallel
     mask = params.getMask()
     if params.nParams==4: #SEIRD
         names = ['beta','alpha','gamma','f']
+    elif params.nParams==2: #SIR
+        names = ['beta', 'gamma']
     elif params.nParams==13: #SUIHTER
         names = ['betaU','betaI','delta','omegaI','omegaH','rhoU','rhoI','rhoH','rhoT','gamma_T','gamma_I','theta_H','theta_T']
 
@@ -19,8 +21,7 @@ def solveMCMC(testPath, model_solver, Y0, nsimu = 1e4, sigma = 0.1*3e4, parallel
     mcstat.data.add_data_set(t_list,Y0)
     minimum = params.getLowerBounds()
     maximum = params.getUpperBounds()
-    U0 = Y0[1]
-    R0 = Y0[7]
+
     if params.nSites != 1:
         for i in range(params.nPhases):
             for j in range(params.nParams):
@@ -29,8 +30,21 @@ def solveMCMC(testPath, model_solver, Y0, nsimu = 1e4, sigma = 0.1*3e4, parallel
                         mcstat.parameters.add_model_parameter(
                             name=str(k)+names[j]+str(i),
                             theta0=params.get()[i,j,k],
-                            minimum=0.9*params.get()[i,j,k],
-                            maximum=1.1*params.get()[i,j,k])
+                            minimum=0.7*params.get()[i,j,k],
+                            maximum=1.3*params.get()[i,j,k])
+        for k in range(params.nSites):
+            mcstat.parameters.add_model_parameter(
+                name=str(k)+'I0',
+                theta0=1,
+                minimum=0.7,
+                maximum=1.3)
+        for k in range(params.nSites):
+            mcstat.parameters.add_model_parameter(
+                name=str(k)+'R0',
+                theta0=1,
+                minimum=0.7,
+                maximum=1.3)
+
     else:
         for i in range(params.nPhases):
             for j in range(params.nParams):
@@ -41,17 +55,18 @@ def solveMCMC(testPath, model_solver, Y0, nsimu = 1e4, sigma = 0.1*3e4, parallel
                         minimum=0.7*params.get()[i,j],
                         maximum=1.3*params.get()[i,j])
 
-        mcstat.parameters.add_model_parameter(
-            name='omegaI_err',
-            theta0=0,
-            prior_mu=0,
-            prior_sigma=0.10)
+        if len(names) == 13:
+            mcstat.parameters.add_model_parameter(
+                name='omegaI_err',
+                theta0=0,
+                prior_mu=0,
+                prior_sigma=0.10)
 
-        mcstat.parameters.add_model_parameter(
-            name='omegaH_err',
-            theta0=0,
-            prior_mu=0,
-            prior_sigma=0.20)
+            mcstat.parameters.add_model_parameter(
+                name='omegaH_err',
+                theta0=0,
+                prior_mu=0,
+                prior_sigma=0.20)
 
         mcstat.parameters.add_model_parameter(
             name='U0',

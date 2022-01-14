@@ -25,7 +25,7 @@ def converter(model, dati, regione, Nc):
     else:
         res = res.sort_values("data")
     res = res.reset_index(drop=True)
-    res_np = np.zeros((len(res), 12 if model=="SUIHTER" else 7))
+    res_np = np.zeros((len(res), 12 if model=="SUIHTER" else 4))
     res_np[:, 0] = geocode  # Geocode
     res_np[:, 1] = np.tile(np.arange(0, len(res)/len(set(geocode)), 1),len(set(geocode)))
 
@@ -60,7 +60,13 @@ def converter(model, dati, regione, Nc):
         res_np[:, 5] = res['dimessi_guariti'].values
         # Dead
         res_np[:, 6] = res['deceduti'].values
-
+    elif model == 'SIR':
+        # Infected
+        res_np[:, 2] = res['ricoverati_con_sintomi'].values + \
+                       res['terapia_intensiva'].values + \
+                       res['isolamento_domiciliare'].values
+        res_np[:, 3] = res['dimessi_guariti'].values+ \
+                       res['deceduti'].values
     if model == 'SUIHTER':
         results_df = pd.DataFrame(res_np, columns=['Geocode', 'time', 'Suscept', 'Undetected', 'Isolated',
                                                    'Hospitalized', 'Threatened', 'Extinct', 'Recovered', 'New_positives','New_threatened','Daily_extinct'])
@@ -68,6 +74,8 @@ def converter(model, dati, regione, Nc):
     elif model == 'SEIRD':
         results_df = pd.DataFrame(res_np, columns=['Geocode', 'time', 'Suscept', 'Exposed', 'Infected',
                                                    'Recovered', 'Dead'])
+    elif model == 'SIR':
+        results_df = pd.DataFrame(res_np, columns=['Geocode', 'time', 'Infected', 'Removed'])
         results_df['data'] = res['data']
     results_df = results_df.astype({"Geocode": int})
     results_df = results_df.sort_values(by=['Geocode', 'time'])

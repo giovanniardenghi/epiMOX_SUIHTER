@@ -38,4 +38,6 @@ if __name__ == '__main__':
     
     Y0 = model_solver.Y0.copy()
 
-    mcstat = solveMCMC(testPath, model_solver, Y0, nsimu=nsimu, sigma=np.array([0.1 * 3e2]*6), parallel=parallel, nproc=nproc, nchains=nchains)
+    n_comp_calibration = 6 if Y0.shape[0]==11 else 1 
+
+    mcstat = solveMCMC(testPath, model_solver, Y0, nsimu=nsimu, sigma=np.array([0.1 * 3e2]*n_comp_calibration), parallel=parallel, nproc=nproc, nchains=nchains)

@@ -515,11 +515,12 @@ class SUIHTER:
         self.Y = self.Y[:,self.t_list[0]:]
 
         Nc = self.Y.shape[0]
-        dates = pd.date_range(start=self.DPC_start + pd.Timedelta(self.t_list[0], 'days'), periods=self.t_list[-1]-self.t_list[0]+1)
-        codes = np.tile(self.codes, len(dates))
+#        dates = pd.date_range(start=self.DPC_start + pd.Timedelta(self.t_list[0], 'days'), periods=self.t_list[-1]-self.t_list[0]+1)
+        codes = np.tile(self.codes, len(self.t_list))
         times = np.repeat(self.t_list, len(self.codes))
+        dates = [self.DPC_start + pd.Timedelta(t, 'days') for t in times]
 
-        results = np.zeros((6+Nc, (len(times))), dtype='O')
+        results = np.zeros((6+Nc, len(times)), dtype='O')
         
         results[:3] = codes, dates, times
         results[3:3+Nc] = self.Y.reshape(Nc, len(times))
@@ -528,10 +529,11 @@ class SUIHTER:
         results[4+Nc,1:] = (self.Y[1,:-1] * self.params.params_time[self.t_list[0]+1:,2]).flatten() 
         results[5+Nc,0] = self.data[self.data['time'] == self.t_list[0]]['New_threatened'].values
         results[5+Nc,1:] = (self.Y[3,:-1] * self.params.params_time[self.t_list[0]:-1,4]).flatten() 
-        results_df = pd.DataFrame(results.T,columns=['Geocode','date','time','Suscept','Undetected','Isolated',
-            'Hospitalized','Threatened','Extinct','Recovered','First_dose','Second_dose','Second_dose_plus','Recovered_detected','New_positives','New_threatened'])
         
         Code = "Age" if self.by_age else "Geocode"
+        results_df = pd.DataFrame(results.T,columns=[Code,'date','time','Suscept','Undetected','Isolated',
+            'Hospitalized','Threatened','Extinct','Recovered','First_dose','Second_dose','Second_dose_plus','Recovered_detected','New_positives','New_threatened'])
+        
         if not self.by_age:
             results_df = results_df.astype({Code: int,"time": 'float64'})
         else:
@@ -540,7 +542,6 @@ class SUIHTER:
         results_df = results_df.sort_values(by=[Code,'date'])
         results_df = results_df.astype(dict(zip(['Suscept','Undetected','Isolated','Hospitalized','Threatened','Extinct','Recovered','First_dose','Second_dose','Second_dose_plus','Recovered_detected','New_positives','New_threatened'],['float64']*13)))
 
-    
         outFileName = self.out_path+'/simdf.'+self.out_type
         if self.out_type == 'csv':
             results_df.to_csv(outFileName,index=False)
