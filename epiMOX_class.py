@@ -122,13 +122,12 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
     Delta_t = params.compute_delta(IFR_t, CFR_t, day_end)
 
     UD = eData['nuovi_positivi'].rolling(center=True,window=7,min_periods=1).mean()/Delta_t
-    UD.index=pd.date_range(epi_start,epi_start+pd.Timedelta(UD.index[-1],'days'))
+    UD.index=pd.date_range('2020-02-24',pd.to_datetime('2020-02-24')+pd.Timedelta(UD.index[-1],'days'))
 
     eData = eData[(eData["data"]>=day_init.isoformat()) & (eData["data"]<=day_end.isoformat())]
     eData = eData.reset_index(drop=True)
     eData = converter(model, eData, country, Nc)
     eData = eData.reset_index(drop=True)
-    
     if country=='Italia':
         ric = pd.read_csv('https://raw.githubusercontent.com/floatingpurr/covid-19_sorveglianza_integrata_italia/main/data/latest/ricoveri.csv')
         #ric = pd.read_csv('https://raw.githubusercontent.com/floatingpurr/covid-19_sorveglianza_integrata_italia/main/data/2021-10-17/ricoveri.csv')
@@ -140,8 +139,8 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
         params.omegaI = si.interp1d(range((day_end-day_init).days-offset+1),omegaI,fill_value='extrapolate',kind='nearest')
     else:
         params.omegaI_vec = np.loadtxt('omegaI.txt')
-    omegaH = pd.Series(eData['New_threatened'].rolling(center=True,window=7,min_periods=1).mean().values/eData['Hospitalized'].values).bfill()#.rolling(center=True,window=7,min_periods=1).mean()
-
+    omegaH = pd.Series(eData['New_threatened'].rolling(center=True,window=7,min_periods=1).mean().values/eData['Hospitalized'].values)#.rolling(center=True,window=7,min_periods=1).mean()
+    
     params.omegaH = si.interp1d(range((day_end-day_init).days+1),omegaH,fill_value='extrapolate',kind='nearest')
     params.define_params_time(Tf)
     for t in range(Tf+1):
@@ -162,16 +161,15 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
 
     if by_age:
         perc = pd.read_csv('https://raw.githubusercontent.com/giovanniardenghi/dpc-covid-data/main/SUIHTER/stato_clinico.csv')
+    #    perc = pd.read_csv('~/dpc-covid-data/main/SUIHTER/stato_clinico.csv')
         perc = perc[(perc['Data']>=DPC_start) & (perc['Data']<=DPC_end)] 
         eData = pd.DataFrame(np.repeat(eData.values,Ns,axis=0),columns=eData.columns)
         eData[perc.columns[3:]] = eData[perc.columns[3:]].mul(perc[perc.columns[3:]].values)
         eData['Age'] = perc['Età'].values
-        eData.sort_values(by=['Age','time'])
 
     initI = eData[eData['time']==0].copy()
     initI = initI.reset_index(drop=True)
     dates = pd.date_range(initI['data'].iloc[0]-pd.Timedelta(7,'days'),initI['data'].iloc[0]+pd.Timedelta(7,'days'))
-
     initI['Undetected'] = UD.loc[dates].mean()
 
     Recovered = (1/IFR_t.loc[day_init]-1)*initI['Extinct'].sum()
