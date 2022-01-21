@@ -103,7 +103,8 @@ def MCMC_postprocess(ResPath, nsample=500, burnin=None, forecast=True, scenario=
     nuovi_positivi_settimana = generate_quantiles(pd.DataFrame(intervals_dict['N_p']).rolling(window=7).sum(), quantiles)
     percentuale_ospedalizzati = generate_quantiles((intervals_dict['H']+intervals_dict['T'])/(intervals_dict['I']+intervals_dict['H']+intervals_dict['T'])*100, quantiles)
     logI = pd.DataFrame(np.log(intervals_dict['I']+intervals_dict['H']+intervals_dict['T']).T)
-    r_star = generate_quantiles((logI.diff(periods=7)/7*9+1).to_numpy().T, quantiles)
+    #r_star = generate_quantiles((logI.diff(periods=7)/7*9+1).to_numpy().T, quantiles)
+    r_star = generate_quantiles((logI.diff()*9+1).to_numpy().T, quantiles)
 
     results_df.index = results_df.index.strftime('%Y-%m-%d')
     results_df.rename_axis('Date', inplace=True)
