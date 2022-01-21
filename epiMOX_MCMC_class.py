@@ -35,7 +35,7 @@ if __name__ == '__main__':
         nproc = nchains = 3
 
     model_solver = epiMOX(testPath)
-    
-    Y0 = model_solver.Y0.copy()
+                                                                                          #-------NUMBER OF MINIMIZING ERROR COMPARTMENTS
+    Y0 = model_solver.Y0.copy()                                                           #V
 
-    mcstat = solveMCMC(testPath, model_solver, Y0, nsimu=nsimu, sigma=np.array([0.1 * 3e2]*6), parallel=parallel, nproc=nproc, nchains=nchains)
+    mcstat = solveMCMC(testPath, model_solver, Y0, nsimu=nsimu, sigma=np.array([0.1 * 3e2]*5), parallel=parallel, nproc=nproc, nchains=nchains)

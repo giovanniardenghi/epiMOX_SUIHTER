@@ -461,7 +461,7 @@ class SUIHTER:
                             (errorH ** 2*weightsH).sum(), 
                             (errorT ** 2*weightsT).sum(), 
                             (errorNP ** 2*weightsNP).sum(), 
-                            (errorR ** 2*weightsR).sum(), 
+                            #(errorR ** 2*weightsR).sum(), 
                             (errorE ** 2*weightsE).sum()]) 
 
         return errorL2
