@@ -386,7 +386,8 @@ class SUIHTER:
             self.solve()
         
         results = self.Y[:,self.t_list].copy()
-        results.resize((results.shape[0]+3, results.shape[1], self.Ns)).squeeze()
+        #results.resize((results.shape[0]+3, results.shape[1], self.Ns)).squeeze()
+        results.resize(results.shape[0]+3, results.shape[1])
         results[1] += results[2]
         results = np.delete(results, 2, 0)
         results[-3] = self.R_d[self.t_list].flatten()

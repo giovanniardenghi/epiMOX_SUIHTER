@@ -352,6 +352,10 @@ def epiMOX(testPath,params=None,ndays=None,tf=None,estim_req=None,ext_deg_in=Non
             scenarios = json.load(scen_file) 
         model_solver.initialize_scenarios(scenarios)
         model_solver.solve()
+
+    with open('util/scenarios.json','r') as scen_file:
+        scenarios = json.load(scen_file) 
+    model_solver.initialize_scenarios(scenarios)
     #model_solver.computeRt()
 
 
