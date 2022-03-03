@@ -101,6 +101,7 @@ class Params():
         self.nParams = 0
         self.nSites = 0
         self.nPhases = 0
+        self.lenPhases = 20
         self.estimated = False
         self.times = np.zeros(0)
         self.dataStart = dataStart
@@ -151,6 +152,22 @@ class Params():
             self.__loadNpy__(paramFileName)
         return()
 
+#   Automatic generation of phases (GZ) 
+    def createTimes(self):
+        ndays = self.dataEnd
+        length = ndays//(self.nPhases - 1) # così ottengo esattamente nPhases numero di fasi (considerando il resto)
+       
+        if length >  self.lenPhases:
+            length = self.lenPhases
+            nPhasesNew = ndays//length + int(ndays%length > 0)
+            for k in range(nPhasesNew - self.nPhases):
+                self.addPhase(length)
+
+        times = np.zeros(self.nPhases-1)
+        times[-1::-1] = [(self.dataEnd - (x+1)*length) for x in range(self.nPhases -1)]
+        return times.astype(int)
+
+
     def define_params_time(self, Tf):
         self.params_time = np.zeros((Tf+1,self.nParams,self.nSites)).squeeze()
 
@@ -162,12 +179,13 @@ class Params():
 
     def compute_delta(self, IFR_t, CFR_t, data_end):
         epi_start = pd.to_datetime('2020-02-24')
+        day_ISS_data = pd.to_datetime('2020-12-08')
         day_init = self.dataStart
         day_end = data_end if data_end in IFR_t.index else data_end - pd.Timedelta(1,'day') 
-        Delta_t = np.clip(IFR_t.loc[epi_start:day_end].values/CFR_t[:(day_end-epi_start).days+1],0,1)
-        Delta_t =  (pd.Series(Delta_t[(day_init-epi_start).days:(day_end-epi_start).days+1]).rolling(center=True,window=7,min_periods=1).mean())/8
+        Delta_t = np.clip(IFR_t.loc[day_ISS_data:day_end].values/CFR_t[int((day_ISS_data-epi_start).days):int((day_end-epi_start).days)+1],0,1)
+        Delta_t =  (pd.Series(Delta_t[int((day_init-day_ISS_data).days):int((day_end-day_ISS_data).days)+1]).rolling(center=True,window=7,min_periods=1).mean())/8
         
-        self.delta = si.interp1d(range((day_end-day_init).days-19),Delta_t[:-20],fill_value="extrapolate",kind='nearest')
+        self.delta = si.interp1d(range(int((day_end-day_init).days)-19),Delta_t[:-20],fill_value="extrapolate",kind='nearest')
         return Delta_t
 
     def addPhase(self,ndays):
@@ -532,9 +550,12 @@ class Params():
         except:
             self.nSites = 1
         self.nPhases = int(readSection(content,b'[nPhases]',1))
+        
+        # For Reading Phases from the params_...csv file
 
-        tmp = readTimes(content, b'[times]', self.nPhases - 1)
-        self.times = np.reshape([int((x-self.dataStart).days) for x in tmp],self.nPhases - 1)
+        #tmp = readTimes(content, b'[times]', self.nPhases - 1)
+        #self.times = np.reshape([int((x-self.dataStart).days) for x in tmp],self.nPhases - 1)
+       
         try:
             self.constant = np.reshape( \
             readSection(content, b'[constant]', self.nParams), \
@@ -573,6 +594,9 @@ class Params():
             self.upper_bounds = np.tile(self.upper_bounds, (self.nSites,1))
         self.upper_bounds = np.reshape(self.upper_bounds, (self.nSites, self.nPhases, self.nParams))
         self.upper_bounds = np.moveaxis(self.upper_bounds,0,-1).squeeze()
+        #Here definition of phases for automatic definition of phases (GZ)
+        self.times = self.createTimes() 
+        Date = [self.dataStart + datetime.timedelta(days = int(self.times[i])) for i in range(self.nPhases -1)]
 
     def __loadNpy__(self,paramFileName):
         with open(paramFileName, 'rb') as f:

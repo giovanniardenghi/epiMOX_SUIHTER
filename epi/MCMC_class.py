@@ -38,8 +38,8 @@ def solveMCMC(testPath, model_solver, Y0, nsimu = 1e4, sigma = 0.1*3e4, parallel
                     mcstat.parameters.add_model_parameter(
                         name=names[j]+str(i),
                         theta0=params.get()[i,j],
-                        minimum=0.7*params.get()[i,j],
-                        maximum=1.3*params.get()[i,j])
+                        minimum=0.5*params.get()[i,j],
+                        maximum=1.5*params.get()[i,j])
 
         mcstat.parameters.add_model_parameter(
             name='omegaI_err',
@@ -56,14 +56,14 @@ def solveMCMC(testPath, model_solver, Y0, nsimu = 1e4, sigma = 0.1*3e4, parallel
         mcstat.parameters.add_model_parameter(
             name='U0',
             theta0=1,
-            minimum=0.7,
-            maximum=1.3)
+            minimum=0.5,
+            maximum=1.5)
 
         mcstat.parameters.add_model_parameter(
             name='R0',
             theta0=1,
-            minimum=0.7,
-            maximum=1.3)
+            minimum=0.5,
+            maximum=1.5)
 
     mcstat.simulation_options.define_simulation_options(
         nsimu=nsimu,

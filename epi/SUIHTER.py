@@ -259,21 +259,21 @@ class SUIHTER:
                             self.color = 'Orange'
                             self.timeNPI = t_int
                         if t-self.timeNPI > self.adapNPI:
-                            tauratioS = betaS_r / betaS_now
-                            tauratio  = betaV_r / betaV_now
+                            tauratioS = betaS_o / betaS_now
+                            tauratio  = betaV_o / betaV_now
                         else:
-                            tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_r / betaS_now + (1-(t-self.timeNPI)/self.adapNPI)*betaS_y / betaS_now
-                            tauratio  = (t-self.timeNPI)/self.adapNPI*betaV_r / betaV_now + (1-(t-self.timeNPI)/self.adapNPI)*betaV_y / betaV_now
+                            tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_o / betaS_now + (1-(t-self.timeNPI)/self.adapNPI)*betaS_y / betaS_now
+                            tauratio  = (t-self.timeNPI)/self.adapNPI*betaV_o / betaV_now + (1-(t-self.timeNPI)/self.adapNPI)*betaV_y / betaV_now
                     elif (delta * U > 150/1e5/7*self.Pop) or ((delta * U > 50/1e5/7*self.Pop) and (H > 0.15*maxH) and (T > 0.1*maxT)):
                         if self.color != 'Yellow':
                             self.color = 'Yellow'
                             self.timeNPI = t_int
                         if t-self.timeNPI > self.adapNPI:
-                            tauratioS = betaS_r / betaS_now
-                            tauratio  = betaV_r / betaV_now
+                            tauratioS = betaS_y / betaS_now
+                            tauratio  = betaV_y / betaV_now
                         else:
-                            tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_r / betaS_now + (1-(t-self.timeNPI)/self.adapNPI)
-                            tauratio  = (t-self.timeNPI)/self.adapNPI*betaV_r / betaV_now + (1-(t-self.timeNPI)/self.adapNPI)
+                            tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_y / betaS_now + (1-(t-self.timeNPI)/self.adapNPI)
+                            tauratio  = (t-self.timeNPI)/self.adapNPI*betaV_y / betaV_now + (1-(t-self.timeNPI)/self.adapNPI)
                 else:
                     tauratioS = betaS_new / betaS_now
                     tauratio  = betaV_new / betaV_now
