@@ -227,7 +227,7 @@ class SUIHTER:
         V2toUv = self.sigma2v * V2 * beta_Uv * Uv / self.Pop
         V2ptoUb = self.sigma2p * V2p * beta_Ub * Ub / self.Pop
         V2ptoUv = self.sigma2pv * V2p * beta_Uv * Uv / self.Pop
-        
+
         if self.forecast:
             maxH = 57705
             maxT = 9044
@@ -259,11 +259,11 @@ class SUIHTER:
                             self.color = 'Orange'
                             self.timeNPI = t_int
                         if t-self.timeNPI > self.adapNPI:
-                            tauratioS = betaS_o / betaS_now
-                            tauratio  = betaV_o / betaV_now
+                            tauratioS = betaS_a / betaS_now
+                            tauratio  = betaV_a / betaV_now
                         else:
-                            tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_o / betaS_now + (1-(t-self.timeNPI)/self.adapNPI)*betaS_y / betaS_now
-                            tauratio  = (t-self.timeNPI)/self.adapNPI*betaV_o / betaV_now + (1-(t-self.timeNPI)/self.adapNPI)*betaV_y / betaV_now
+                            tauratioS = (t-self.timeNPI)/self.adapNPI*betaS_a / betaS_now + (1-(t-self.timeNPI)/self.adapNPI)*betaS_y / betaS_now
+                            tauratio  = (t-self.timeNPI)/self.adapNPI*betaV_a / betaV_now + (1-(t-self.timeNPI)/self.adapNPI)*betaV_y / betaV_now
                     elif (delta * U > 150/1e5/7*self.Pop) or ((delta * U > 50/1e5/7*self.Pop) and (H > 0.15*maxH) and (T > 0.1*maxT)):
                         if self.color != 'Yellow':
                             self.color = 'Yellow'
